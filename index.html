@@ -1,1 +1,314 @@
-Hello World
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Monitoring Tools</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+            overflow: hidden;
+        }
+        header {
+            background: #333;
+            color: #fff;
+            padding-top: 30px;
+            min-height: 70px;
+            border-bottom: #77aaff 3px solid;
+        }
+        header a {
+            color: #fff;
+            text-decoration: none;
+            text-transform: uppercase;
+            font-size: 16px;
+        }
+        header ul {
+            padding: 0;
+            list-style: none;
+        }
+        header li {
+            display: inline;
+            padding: 0 20px 0 20px;
+        }
+        header #branding {
+            float: left;
+        }
+        header #branding h1 {
+            margin: 0;
+        }
+        header nav {
+            float: right;
+            margin-top: 10px;
+        }
+        header .highlight, header .current a {
+            color: #77aaff;
+            font-weight: bold;
+        }
+        header a:hover {
+            color: #cccccc;
+            font-weight: bold;
+        }
+        .showcase {
+            min-height: 400px;
+            background: url('https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80') no-repeat center center/cover;
+            text-align: center;
+            color: #ffffff;
+            padding-top: 100px;
+        }
+        .showcase h1 {
+            font-size: 50px;
+            margin-bottom: 10px;
+            text-shadow: 1px 1px 3px #000;
+        }
+        .showcase p {
+            font-size: 20px;
+            text-shadow: 1px 1px 3px #000;
+        }
+        .main-content {
+            padding: 30px;
+            background: #fff;
+            margin-top: 20px;
+            border-radius: 5px;
+        }
+        .main-content h2 {
+            color: #333;
+        }
+        .features {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .feature-box {
+            flex-basis: 30%;
+            background: #f4f4f4;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .feature-box h3 {
+            color: #333;
+        }
+        footer {
+            background: #333;
+            color: #fff;
+            text-align: center;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .counter {
+            font-weight: bold;
+            color: #77aaff;
+        }
+        .language-selector {
+            background: #fff;
+            padding: 10px 15px;
+            border-radius: 5px;
+            color: #333;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            margin: 10px auto;
+            text-align: center;
+            width: fit-content;
+        }
+        .language-selector select {
+            padding: 5px;
+            border-radius: 3px;
+            border: 1px solid #ccc;
+            background: #fff;
+            color: #333;
+        }
+        @media(max-width: 768px) {
+            header #branding,
+            header nav,
+            header nav li {
+                float: none;
+                text-align: center;
+                display: block;
+            }
+            .feature-box {
+                flex-basis: 100%;
+            }
+            .language-selector {
+                position: static;
+                text-align: center;
+                margin: 10px auto;
+                width: fit-content;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="language-selector">
+        <label for="language-switcher">语言/Language: </label>
+        <select id="language-switcher" onchange="changeLanguage()">
+            <option value="en">English</option>
+            <option value="zh">中文</option>
+        </select>
+    </div>
+
+    <header>
+        <div class="container">
+            <div id="branding">
+                <h1><span class="highlight">DB</span> <span id="header-title">Monitoring Tools</span></h1>
+            </div>
+            <nav>
+                <ul>
+                    <li class="current"><a href="index.html" id="nav-home">Home</a></li>
+                    <li><a href="#" id="nav-tools">Tools</a></li>
+                    <li><a href="#" id="nav-docs">Documentation</a></li>
+                    <li><a href="#" id="nav-contact">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="showcase">
+        <div class="container">
+            <h1 id="showcase-title">Professional Database Monitoring Solutions</h1>
+            <p id="showcase-desc">Monitor, analyze, and optimize your database performance with our cutting-edge tools</p>
+        </div>
+    </section>
+
+    <section class="main-content">
+        <div class="container">
+            <h2 id="about-title">About Database Monitoring Tools</h2>
+            <p id="about-desc">Database monitoring tools are essential for maintaining optimal performance, ensuring security, and troubleshooting issues in modern database systems. These tools provide real-time insights into database operations, helping database administrators and developers make informed decisions.</p>
+            
+            <div class="features">
+                <div class="feature-box">
+                    <h3 id="feature1-title">Performance Tracking</h3>
+                    <p id="feature1-desc">Monitor query execution times, resource usage, and identify bottlenecks in your database operations to ensure optimal performance.</p>
+                </div>
+                <div class="feature-box">
+                    <h3 id="feature2-title">Security Monitoring</h3>
+                    <p id="feature2-desc">Detect unauthorized access attempts, unusual activities, and potential security threats to protect your valuable data assets.</p>
+                </div>
+                <div class="feature-box">
+                    <h3 id="feature3-title">Automated Alerts</h3>
+                    <p id="feature3-desc">Receive instant notifications when critical issues arise, allowing for rapid response and minimizing downtime.</p>
+                </div>
+            </div>
+            
+            <h2 id="key-features">Key Features</h2>
+            <p id="key-features-desc">Modern database monitoring tools offer a comprehensive suite of features designed to provide complete visibility into your database infrastructure:</p>
+            <ul>
+                <li id="feature-list1">Real-time performance dashboards</li>
+                <li id="feature-list2">Query analysis and optimization suggestions</li>
+                <li id="feature-list3">Capacity planning and trend analysis</li>
+                <li id="feature-list4">Multi-database platform support (MySQL, PostgreSQL, MongoDB, etc.)</li>
+                <li id="feature-list5">Historical performance data and reporting</li>
+                <li id="feature-list6">Customizable alerting systems</li>
+            </ul>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p id="footer-copy">Database Monitoring Tools &copy; 2025</p>
+            <p id="footer-visitor">Visitor Count: <span class="counter" id="visitorCount">Loading...</span></p>
+        </div>
+    </footer>
+
+    <script>
+        // Language translations
+        const translations = {
+            en: {
+                "header-title": "Monitoring Tools",
+                "nav-home": "Home",
+                "nav-tools": "Tools",
+                "nav-docs": "Documentation",
+                "nav-contact": "Contact",
+                "showcase-title": "Professional Database Monitoring Solutions",
+                "showcase-desc": "Monitor, analyze, and optimize your database performance with our cutting-edge tools",
+                "about-title": "About Database Monitoring Tools",
+                "about-desc": "Database monitoring tools are essential for maintaining optimal performance, ensuring security, and troubleshooting issues in modern database systems. These tools provide real-time insights into database operations, helping database administrators and developers make informed decisions.",
+                "feature1-title": "Performance Tracking",
+                "feature1-desc": "Monitor query execution times, resource usage, and identify bottlenecks in your database operations to ensure optimal performance.",
+                "feature2-title": "Security Monitoring",
+                "feature2-desc": "Detect unauthorized access attempts, unusual activities, and potential security threats to protect your valuable data assets.",
+                "feature3-title": "Automated Alerts",
+                "feature3-desc": "Receive instant notifications when critical issues arise, allowing for rapid response and minimizing downtime.",
+                "key-features": "Key Features",
+                "key-features-desc": "Modern database monitoring tools offer a comprehensive suite of features designed to provide complete visibility into your database infrastructure:",
+                "feature-list1": "Real-time performance dashboards",
+                "feature-list2": "Query analysis and optimization suggestions",
+                "feature-list3": "Capacity planning and trend analysis",
+                "feature-list4": "Multi-database platform support (MySQL, PostgreSQL, MongoDB, etc.)",
+                "feature-list5": "Historical performance data and reporting",
+                "feature-list6": "Customizable alerting systems",
+                "footer-copy": "Database Monitoring Tools &copy; 2025",
+                "footer-visitor": "Visitor Count: "
+            },
+            zh: {
+                "header-title": "监控工具",
+                "nav-home": "首页",
+                "nav-tools": "工具",
+                "nav-docs": "文档",
+                "nav-contact": "联系",
+                "showcase-title": "专业数据库监控解决方案",
+                "showcase-desc": "使用我们先进的工具监控、分析和优化您的数据库性能",
+                "about-title": "关于数据库监控工具",
+                "about-desc": "数据库监控工具对于维护现代数据库系统的最佳性能、确保安全性和解决问题至关重要。这些工具提供对数据库操作的实时洞察，帮助数据库管理员和开发人员做出明智的决策。",
+                "feature1-title": "性能跟踪",
+                "feature1-desc": "监控查询执行时间、资源使用情况，识别数据库操作中的瓶颈以确保最佳性能。",
+                "feature2-title": "安全监控",
+                "feature2-desc": "检测未授权访问尝试、异常活动和潜在的安全威胁，以保护您的宝贵数据资产。",
+                "feature3-title": "自动警报",
+                "feature3-desc": "在出现关键问题时立即收到通知，实现快速响应并最大限度地减少停机时间。",
+                "key-features": "主要功能",
+                "key-features-desc": "现代数据库监控工具提供了一套全面的功能，旨在为您的数据库基础设施提供完整的可见性：",
+                "feature-list1": "实时性能仪表板",
+                "feature-list2": "查询分析和优化建议",
+                "feature-list3": "容量规划和趋势分析",
+                "feature-list4": "多数据库平台支持（MySQL、PostgreSQL、MongoDB等）",
+                "feature-list5": "历史性能数据和报告",
+                "feature-list6": "可定制的警报系统",
+                "footer-copy": "数据库监控工具 &copy; 2025",
+                "footer-visitor": "访客数量: "
+            }
+        };
+
+        // Simulating a visitor counter - in a real implementation, this would connect to a backend service
+        document.addEventListener('DOMContentLoaded', function() {
+            // For demo purposes, we'll generate a random count between 1000-2000
+            // In a real implementation, this would fetch from a server-side counter
+            const count = Math.floor(Math.random() * 1000) + 1000;
+            document.getElementById('visitorCount').textContent = count;
+        });
+
+        // Change language function
+        function changeLanguage() {
+            const language = document.getElementById('language-switcher').value;
+            const elements = document.querySelectorAll('[id^="header-title"], [id^="nav-"], [id^="showcase-"], [id^="about-"], [id^="feature"], [id^="key-"], [id^="footer-"]');
+            
+            elements.forEach(element => {
+                const id = element.id;
+                if (translations[language][id]) {
+                    if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+                        element.placeholder = translations[language][id];
+                    } else {
+                        element.textContent = translations[language][id];
+                    }
+                }
+            });
+            
+            // Update visitor counter text separately
+            const visitorCountElement = document.querySelector('.counter');
+            if (visitorCountElement) {
+                const visitorText = document.getElementById('footer-visitor').textContent;
+                document.getElementById('footer-visitor').innerHTML = visitorText + '<span class="counter" id="visitorCount">' + visitorCountElement.textContent + '</span>';
+            }
+        }
+    </script>
+</body>
+</html>
