@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>猛鬼宿舍前传</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --glass: rgba(30, 41, 59, 0.85);
+            --accent: #38bdf8;
+            --danger: #ef4444;
+            --success: #22c55e;
+        }
+
+        * {
+            margin: 0; padding: 0; box-sizing: border-box;
+            user-select: none; -webkit-user-select: none;
+            touch-action: none; -webkit-touch-callout: none;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            outline: none; -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(56, 189, 248, 0.05) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(239, 68, 68, 0.05) 0%, transparent 20%);
+            color: #e2e8f0;
+            height: 100vh; width: 100vw;
+            overflow: hidden;
+            display: flex; flex-direction: column;
+        }
+
+        /* HUD */
+        .hud {
+            position: absolute; top: 0; left: 0; width: 100%;
+            padding: max(10px, env(safe-area-inset-top)) 15px 10px;
+            display: flex; justify-content: space-between;
+            pointer-events: none; z-index: 10;
+        }
+        .stats-bar {
+            background: var(--glass);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 8px 16px;
+            border-radius: 24px;
+            display: flex; gap: 15px;
+            pointer-events: auto;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+        .stat { font-weight: 800; font-size: 0.9rem; display: flex; align-items: center; gap: 6px; }
+        
+        /* 游戏画布 */
+        .game-area {
+            flex: 1; position: relative;
+            width: 100%; overflow: hidden;
+            background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        #svgCanvas { width: 100%; height: 100%; display: block; }
+
+        /* 底部控制栏 */
+        .controls {
+            background: #1e293b;
+            padding: 10px 10px max(20px, env(safe-area-inset-bottom));
+            display: flex; gap: 12px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            z-index: 20;
+        }
+        .card-btn {
+            flex: 1; height: 64px;
+            background: #334155;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            color: #fff;
+            position: relative;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            transition: all 0.1s;
+        }
+        .card-btn:active { transform: scale(0.96); background: #475569; }
+        .icon-box { font-size: 1.4rem; margin-bottom: 2px; }
+        .cost { font-size: 0.75rem; color: #94a3b8; font-weight: 600; }
+        .btn-wave { background: linear-gradient(135deg, #f59e0b, #d97706); border: none; }
+        
+        /* 预览与特效 */
+        .drag-preview {
+            position: absolute; pointer-events: none; z-index: 50;
+            transform: translate(-50%, -150%);
+            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.6));
+            display: none;
+        }
+        .range-circle {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            border: 2px dashed rgba(56, 189, 248, 0.6);
+            background: rgba(56, 189, 248, 0.15);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        
+        .toast {
+            position: absolute; top: 20%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.85); color: #fff;
+            padding: 10px 20px; border-radius: 30px;
+            font-size: 0.95rem; pointer-events: none;
+            opacity: 0; transition: opacity 0.3s;
+            border: 1px solid var(--accent);
+            font-weight: bold;
+            z-index: 200;
+        }
+
+        /* 模态框 */
+        .modal {
+            position: absolute; inset: 0;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(5px);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 100; transition: opacity 0.3s;
+        }
+        .start-btn {
+            background: var(--success); color: #fff;
+            border: none; padding: 18px 60px;
+            font-size: 1.4rem; font-weight: 800;
+            border-radius: 50px; margin-top: 40px;
+            box-shadow: 0 0 25px rgba(34, 197, 94, 0.4);
+            letter-spacing: 1px;
+            transition: transform 0.1s;
+        }
+        .start-btn:active { transform: scale(0.95); }
+    </style>
+</head>
+<body>
+
+    <div class="hud">
+        <div class="stats-bar">
+            <div class="stat" style="color:#fbbf24"><span>◈</span> <span id="money">150</span></div>
+            <div class="stat" style="color:#f87171"><span>♥</span> <span id="lives">10</span></div>
+            <div class="stat" style="color:#38bdf8"><span>⚔</span> <span id="wave">1</span></div>
+        </div>
+        <button id="soundToggle" style="background:none;border:none;font-size:1.5rem;padding:0 10px;">🔊</button>
+    </div>
+
+    <div class="game-area">
+        <svg id="svgCanvas" preserveAspectRatio="none">
+            <defs>
+                <linearGradient id="gradTower1" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#4ade80" />
+                    <stop offset="100%" style="stop-color:#166534" />
+                </linearGradient>
+                <linearGradient id="gradTower2" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" style="stop-color:#60a5fa" />
+                    <stop offset="100%" style="stop-color:#1e3a8a" />
+                </linearGradient>
+                <radialGradient id="gradEnemy1" cx="50%" cy="50%" r="50%">
+                    <stop offset="40%" style="stop-color:#f472b6" />
+                    <stop offset="100%" style="stop-color:#be185d" />
+                </radialGradient>
+                <linearGradient id="gradEnemy2" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" style="stop-color:#fbbf24" />
+                    <stop offset="100%" style="stop-color:#d97706" />
+                </linearGradient>
+                <radialGradient id="gradCore">
+                    <stop offset="0%" style="stop-color:#38bdf8" />
+                    <stop offset="100%" style="stop-color:#0f172a" />
+                </radialGradient>
+                <filter id="glow">
+                    <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+                    <feMerge>
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                </filter>
+            </defs>
+        </svg>
+        <div id="toast" class="toast"></div>
+        <div id="dragPreview" class="drag-preview">
+            <div id="previewRange" class="range-circle"></div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="card-btn" id="btnT1">
+            <div class="icon-box">⚡</div>
+            <div class="cost">激光塔 50</div>
+        </button>
+        <button class="card-btn" id="btnT2">
+            <div class="icon-box">💣</div>
+            <div class="cost">重炮 100</div>
+        </button>
+        <button class="card-btn btn-wave" id="btnNext">
+            <div class="icon-box" style="font-weight:bold">⚔</div>
+            <div class="cost" style="color:rgba(255,255,255,0.8)">下一波</div>
+        </button>
+    </div>
+
+    <div id="startModal" class="modal">
+        <h1 style="font-size: 2.5rem; background: linear-gradient(to right, #4ade80, #38bdf8); -webkit-background-clip: text; color: transparent; margin-bottom: 10px; font-weight: 900;">猛鬼宿舍前传</h1>
+        <p style="color:#94a3b8; font-size: 1rem;">借以此游戏献给我心爱的老婆晶晶姑娘和女儿忻幺宝宝，巴卡拉卡</p>
+        <p style="color:#94a3b8; font-size: 1rem;">长按图标 拖拽建造</p>
+        <button id="startBtn" class="start-btn">开始游戏</button>
+    </div>
+
+    <!-- 纯 JavaScript 逻辑 (无需编译) -->
+    <script>
+        // --- 资源定义 ---
+        const ASSETS = {
+            tower1: `
+                <g filter="url(#glow)">
+                    <ellipse cx="0" cy="15" rx="15" ry="8" fill="rgba(0,0,0,0.5)" />
+                    <path d="M-12 10 L-8 0 L8 0 L12 10 L0 18 Z" fill="#14532d" stroke="#4ade80" stroke-width="1"/>
+                    <circle cx="0" cy="0" r="8" fill="url(#gradTower1)" />
+                    <circle cx="0" cy="0" r="4" fill="#fff" />
+                    <rect x="-2" y="-18" width="4" height="18" fill="#4ade80" rx="2" />
+                </g>
+            `,
+            tower2: `
+                <g>
+                    <ellipse cx="0" cy="18" rx="18" ry="10" fill="rgba(0,0,0,0.5)" />
+                    <rect x="-14" y="-5" width="28" height="24" rx="4" fill="#1e3a8a" stroke="#60a5fa" stroke-width="1"/>
+                    <circle cx="0" cy="5" r="10" fill="url(#gradTower2)" />
+                    <rect x="-8" y="-22" width="6" height="24" fill="#3b82f6" rx="2" />
+                    <rect x="2" y="-22" width="6" height="24" fill="#3b82f6" rx="2" />
+                    <rect x="-9" y="-18" width="18" height="6" fill="#1d4ed8" rx="1" />
+                </g>
+            `,
+            enemy1: `
+                <g>
+                    <ellipse cx="0" cy="15" rx="8" ry="4" fill="rgba(0,0,0,0.3)" />
+                    <path d="M0 -15 L12 0 L0 15 L-12 0 Z" fill="url(#gradEnemy1)" stroke="#fff" stroke-width="1.5"/>
+                    <circle cx="0" cy="0" r="4" fill="#be185d" />
+                    <circle cx="0" cy="0" r="2" fill="#fff" />
+                </g>
+            `,
+            enemy2: `
+                <g>
+                    <path d="M0 -18 L10 10 L0 5 L-10 10 Z" fill="url(#gradEnemy2)" stroke="#fff" stroke-width="1.5"/>
+                    <rect x="-2" y="8" width="4" height="6" fill="#d97706" />
+                </g>
+            `,
+            enemy3: `
+                <g>
+                    <rect x="-14" y="-14" width="28" height="28" rx="6" fill="#7c3aed" stroke="#fff" stroke-width="2"/>
+                    <path d="M-14 -14 L14 14 M14 -14 L-14 14" stroke="rgba(0,0,0,0.3)" stroke-width="4"/>
+                    <circle r="6" fill="#a78bfa" />
+                </g>
+            `,
+            base: `
+                <g>
+                    <circle r="25" fill="rgba(56, 189, 248, 0.1)" stroke="#38bdf8" stroke-width="1" stroke-dasharray="5,5">
+                         <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="10s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle r="15" fill="url(#gradCore)" stroke="#7dd3fc" stroke-width="2" />
+                    <path d="M-4 -8 L4 -8 L0 8 Z" fill="#fff">
+                         <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite"/>
+                    </path>
+                </g>
+            `,
+            proj1: `<line x1="0" y1="0" x2="0" y2="10" stroke="#4ade80" stroke-width="3" stroke-linecap="round" />`,
+            proj2: `<circle r="4" fill="#60a5fa" stroke="#fff" stroke-width="1" />`
+        };
+
+        // --- 配置 ---
+        const CFG = {
+            costs: { t1: 50, t2: 100 },
+            pathPct: [
+                {x: 0, y: 0.2}, {x: 0.25, y: 0.2}, {x: 0.25, y: 0.6}, 
+                {x: 0.6, y: 0.6}, {x: 0.6, y: 0.3}, {x: 0.85, y: 0.3}, 
+                {x: 0.85, y: 0.8}, {x: 0.4, y: 0.8}, {x: 0.4, y: 1}
+            ],
+            realPath: []
+        };
+
+        const state = {
+            money: 150, lives: 10, wave: 1, score: 0,
+            isRunning: false, soundOn: true,
+            entities: { enemies: [], towers: [], projectiles: [] },
+            drag: { active: false, type: null }
+        };
+
+        const DOM = {
+            svg: document.getElementById('svgCanvas'),
+            ui: {
+                money: document.getElementById('money'),
+                lives: document.getElementById('lives'),
+                wave: document.getElementById('wave'),
+                toast: document.getElementById('toast'),
+                preview: document.getElementById('dragPreview'),
+                range: document.getElementById('previewRange'),
+                startModal: document.getElementById('startModal'),
+                startBtn: document.getElementById('startBtn')
+            }
+        };
+
+        // --- 音频系统 ---
+        let audioCtx;
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playSfx(type) {
+            if (!state.soundOn || !audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            if (type === 'laser') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+            } else if (type === 'boom') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'ui') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+            }
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+        }
+
+        // --- 工具函数 ---
+        function createEl(tag, attrs={}) {
+            const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+            for(let k in attrs) el.setAttribute(k, attrs[k]);
+            return el;
+        }
+
+        function updateUI() {
+            DOM.ui.money.textContent = state.money;
+            DOM.ui.lives.textContent = state.lives;
+            DOM.ui.wave.textContent = state.wave;
+        }
+
+        function toast(msg) {
+            DOM.ui.toast.textContent = msg;
+            DOM.ui.toast.style.opacity = 1;
+            DOM.ui.toast.style.top = '25%';
+            setTimeout(() => {
+                DOM.ui.toast.style.opacity = 0;
+                DOM.ui.toast.style.top = '20%';
+            }, 1500);
+        }
+
+        // --- 游戏类 ---
+        class Enemy {
+            constructor(type) {
+                this.el = createEl('g');
+                if (type === 'basic') { 
+                    this.el.innerHTML = ASSETS.enemy1; 
+                    this.hp = this.maxHp = 30; this.speed = 2; this.reward = 10; 
+                } else if (type === 'fast') { 
+                    this.el.innerHTML = ASSETS.enemy2; 
+                    this.hp = this.maxHp = 15; this.speed = 3.5; this.reward = 15; 
+                } else { 
+                    this.el.innerHTML = ASSETS.enemy3; 
+                    this.hp = this.maxHp = 120; this.speed = 1.2; this.reward = 30; 
+                }
+                
+                const hpBar = createEl('rect', {x:-10, y:-22, width:20, height:3, fill:'#22c55e', rx:1});
+                const hpBg = createEl('rect', {x:-10, y:-22, width:20, height:3, fill:'#334155', rx:1});
+                this.el.prepend(hpBar); this.el.prepend(hpBg);
+                this.hpEl = hpBar;
+
+                DOM.svg.appendChild(this.el);
+                this.pathIdx = 0;
+                this.x = CFG.realPath[0].x; 
+                this.y = CFG.realPath[0].y;
+                this.dead = false;
+                this.updatePos();
+            }
+            updatePos() {
+                let angle = 0;
+                if (this.pathIdx < CFG.realPath.length - 1) {
+                    const next = CFG.realPath[this.pathIdx+1];
+                    angle = Math.atan2(next.y - this.y, next.x - this.x) * 180 / Math.PI + 90;
+                }
+                this.el.setAttribute('transform', `translate(${this.x},${this.y}) rotate(${angle})`);
+            }
+            move() {
+                if (this.dead) return;
+                const target = CFG.realPath[this.pathIdx + 1];
+                if (!target) {
+                    this.remove();
+                    state.lives--;
+                    updateUI();
+                    if(state.lives<=0) gameOver();
+                    return;
+                }
+                const dx = target.x - this.x;
+                const dy = target.y - this.y;
+                const dist = Math.hypot(dx, dy);
+                const step = this.speed * (DOM.svg.clientHeight/600);
+
+                if (dist < step) {
+                    this.x = target.x; this.y = target.y; this.pathIdx++;
+                } else {
+                    this.x += (dx/dist)*step;
+                    this.y += (dy/dist)*step;
+                }
+                this.updatePos();
+            }
+            hit(dmg) {
+                this.hp -= dmg;
+                this.hpEl.setAttribute('width', Math.max(0, 20*(this.hp/this.maxHp)));
+                if (this.hp <= 0) {
+                    this.remove();
+                    state.money += this.reward;
+                    updateUI();
+                    playSfx('ui');
+                }
+            }
+            remove() { this.dead = true; this.el.remove(); }
+        }
+
+        class Tower {
+            constructor(x, y, type) {
+                this.x = x; this.y = y; this.type = type;
+                this.el = createEl('g', {transform: `translate(${x},${y})`});
+                this.el.innerHTML = type === 't1' ? ASSETS.tower1 : ASSETS.tower2;
+                DOM.svg.appendChild(this.el);
+                
+                this.range = type === 't1' ? 100 : 160;
+                this.dmg = type === 't1' ? 12 : 40;
+                this.cd = 0;
+                this.maxCd = type === 't1' ? 30 : 70;
+            }
+            update() {
+                if (this.cd > 0) { this.cd--; return; }
+                const target = state.entities.enemies.find(e => !e.dead && Math.hypot(e.x - this.x, e.y - this.y) < this.range);
+                if (target) {
+                    this.fire(target);
+                    this.cd = this.maxCd;
+                }
+            }
+            fire(target) {
+                const angle = Math.atan2(target.y - this.y, target.x - this.x) * 180 / Math.PI + 90;
+                this.el.setAttribute('transform', `translate(${this.x},${this.y}) rotate(${angle})`);
+                state.entities.projectiles.push(new Projectile(this.x, this.y, target, this.type));
+                playSfx(this.type === 't1' ? 'laser' : 'boom');
+            }
+        }
+
+        class Projectile {
+            constructor(x, y, target, type) {
+                this.x = x; this.y = y; this.target = target;
+                this.type = type;
+                this.el = createEl('g');
+                this.el.innerHTML = type === 't1' ? ASSETS.proj1 : ASSETS.proj2;
+                DOM.svg.appendChild(this.el);
+                this.speed = type === 't1' ? 12 : 8;
+                this.dmg = type === 't1' ? 12 : 40;
+                this.active = true;
+            }
+            update() {
+                if (!this.active) return;
+                if (this.target.dead) { this.remove(); return; }
+                
+                const dx = this.target.x - this.x;
+                const dy = this.target.y - this.y;
+                const dist = Math.hypot(dx, dy);
+                const step = this.speed * (DOM.svg.clientHeight/600);
+                
+                const angle = Math.atan2(dy, dx) * 180 / Math.PI + 90;
+                this.el.setAttribute('transform', `translate(${this.x},${this.y}) rotate(${angle})`);
+
+                if (dist < step) {
+                    this.target.hit(this.dmg);
+                    this.remove();
+                    // Hit effect
+                    const hit = createEl('circle', {cx:this.x, cy:this.y, r:5, fill:'#fff', opacity:0.8});
+                    DOM.svg.appendChild(hit);
+                    let op = 0.8;
+                    const fade = () => {
+                        op -= 0.1;
+                        hit.setAttribute('opacity', op);
+                        hit.setAttribute('r', 5 + (0.8-op)*10);
+                        if(op>0) requestAnimationFrame(fade); else hit.remove();
+                    };
+                    requestAnimationFrame(fade);
+                } else {
+                    this.x += (dx/dist)*step;
+                    this.y += (dy/dist)*step;
+                }
+            }
+            remove() { this.active = false; this.el.remove(); }
+        }
+
+        // --- 核心逻辑 ---
+        function initMap() {
+            state.entities.enemies.forEach(e=>e.el.remove());
+            state.entities.towers.forEach(t=>t.el.remove());
+            state.entities.projectiles.forEach(p=>p.el.remove());
+            state.entities = {enemies:[], towers:[], projectiles:[]};
+            
+            Array.from(DOM.svg.children).forEach(c => {
+                if(c.tagName !== 'defs') c.remove();
+            });
+
+            const w = DOM.svg.clientWidth, h = DOM.svg.clientHeight;
+            CFG.realPath = CFG.pathPct.map(p => ({x: p.x*w, y: p.y*h}));
+            
+            let d = `M ${CFG.realPath[0].x} ${CFG.realPath[0].y}`;
+            for(let i=1; i<CFG.realPath.length; i++) d += ` L ${CFG.realPath[i].x} ${CFG.realPath[i].y}`;
+            
+            DOM.svg.appendChild(createEl('path', {
+                d: d, fill: 'none', stroke: 'rgba(56, 189, 248, 0.15)', 'stroke-width': 30, 'stroke-linecap': 'round', 'stroke-linejoin': 'round'
+            }));
+            DOM.svg.appendChild(createEl('path', {
+                d: d, fill: 'none', stroke: 'rgba(56, 189, 248, 0.3)', 'stroke-width': 2, 'stroke-dasharray': '5,5'
+            }));
+
+            const end = CFG.realPath[CFG.realPath.length-1];
+            const base = createEl('g', {transform: `translate(${end.x},${end.y})`});
+            base.innerHTML = ASSETS.base;
+            DOM.svg.appendChild(base);
+        }
+
+        let loopId;
+        let spawnTimer = 0;
+        function loop() {
+            if (!state.isRunning) return;
+            
+            spawnTimer++;
+            const interval = Math.max(30, 120 - state.wave * 8);
+            if (spawnTimer > interval) {
+                spawnTimer = 0;
+                const r = Math.random();
+                let t = 'basic';
+                if (state.wave > 2 && r > 0.7) t = 'fast';
+                if (state.wave > 4 && r > 0.9) t = 'strong';
+                state.entities.enemies.push(new Enemy(t));
+            }
+
+            state.entities.enemies.forEach(e => e.move());
+            state.entities.towers.forEach(t => t.update());
+            state.entities.projectiles.forEach(p => p.update());
+
+            state.entities.enemies = state.entities.enemies.filter(e => !e.dead);
+            state.entities.projectiles = state.entities.projectiles.filter(p => p.active);
+
+            loopId = requestAnimationFrame(loop);
+        }
+
+        function startGame() {
+            initAudio();
+            initMap();
+            state.money = 150; state.lives = 10; state.wave = 1; state.isRunning = true;
+            updateUI();
+            DOM.ui.startModal.style.display = 'none';
+            playSfx('ui');
+            loop();
+        }
+
+        function gameOver() {
+            state.isRunning = false;
+            cancelAnimationFrame(loopId);
+            DOM.ui.startModal.style.display = 'flex';
+            DOM.ui.startModal.querySelector('h1').textContent = "MISSION FAILED";
+            DOM.ui.startBtn.textContent = "RETRY";
+        }
+
+        // --- 交互系统 ---
+        function getCoords(e) {
+            const t = e.touches ? e.touches[0] : e;
+            const r = DOM.svg.getBoundingClientRect();
+            return { x: t.clientX - r.left, y: t.clientY - r.top, cx: t.clientX, cy: t.clientY };
+        }
+
+        function startDrag(type, e) {
+            e.preventDefault(); e.stopPropagation();
+            if (state.money < CFG.costs[type]) {
+                toast(`资金不足! 需要 ${CFG.costs[type]}`);
+                return;
+            }
+            state.drag = { active: true, type: type };
+            
+            DOM.ui.preview.innerHTML = type === 't1' ? ASSETS.tower1 : ASSETS.tower2;
+            const range = type === 't1' ? 100 : 160;
+            DOM.ui.range.style.width = DOM.ui.range.style.height = (range*2)+'px';
+            DOM.ui.range.appendChild(DOM.ui.preview.firstElementChild.cloneNode(true));
+            
+            DOM.ui.preview.style.display = 'block';
+            moveDrag(e);
+        }
+
+        function moveDrag(e) {
+            if (!state.drag.active) return;
+            const pos = getCoords(e);
+            DOM.ui.preview.style.left = pos.cx + 'px';
+            DOM.ui.preview.style.top = pos.cy + 'px';
+        }
+
+        function endDrag(e) {
+            if (!state.drag.active) return;
+            state.drag.active = false;
+            DOM.ui.preview.style.display = 'none';
+            
+            const t = e.changedTouches ? e.changedTouches[0] : e;
+            const r = DOM.svg.getBoundingClientRect();
+            const x = t.clientX - r.left;
+            const y = t.clientY - r.top;
+
+            if (y < 60 || y > r.height - 80) return;
+
+            if (state.entities.towers.some(t => Math.hypot(t.x-x, t.y-y) < 40)) {
+                toast('位置重叠'); return;
+            }
+            
+            let onPath = false;
+            for(let i=0; i<CFG.realPath.length-1; i++) {
+                const p1 = CFG.realPath[i], p2 = CFG.realPath[i+1];
+                const A = x - p1.x, B = y - p1.y, C = p2.x - p1.x, D = p2.y - p1.y;
+                const dot = A * C + B * D;
+                const lenSq = C * C + D * D;
+                let param = -1;
+                if (lenSq !== 0) param = dot / lenSq;
+                let xx, yy;
+                if (param < 0) { xx = p1.x; yy = p1.y; }
+                else if (param > 1) { xx = p2.x; yy = p2.y; }
+                else { xx = p1.x + param * C; yy = p1.y + param * D; }
+                const dist = Math.hypot(x - xx, y - yy);
+                if (dist < 35) { onPath = true; break; }
+            }
+            if (onPath) { toast('距离路径太近'); return; }
+
+            state.money -= CFG.costs[state.drag.type];
+            state.entities.towers.push(new Tower(x, y, state.drag.type));
+            updateUI();
+            playSfx('ui');
+        }
+
+        // --- 事件绑定 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // 开始按钮
+            DOM.ui.startBtn.addEventListener('click', startGame);
+            DOM.ui.startBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault(); 
+                startGame();
+            }, {passive: false});
+
+            // 建造按钮
+            const btnT1 = document.getElementById('btnT1');
+            const btnT2 = document.getElementById('btnT2');
+            
+            btnT1.addEventListener('touchstart', (e)=>startDrag('t1', e), {passive:false});
+            btnT2.addEventListener('touchstart', (e)=>startDrag('t2', e), {passive:false});
+            btnT1.addEventListener('mousedown', (e)=>startDrag('t1', e));
+            btnT2.addEventListener('mousedown', (e)=>startDrag('t2', e));
+
+            // 全局移动/松开
+            window.addEventListener('touchmove', (e)=>{ if(state.drag.active) e.preventDefault(); moveDrag(e); }, {passive:false});
+            window.addEventListener('touchend', endDrag);
+            window.addEventListener('mousemove', moveDrag);
+            window.addEventListener('mouseup', endDrag);
+
+            // 下一波
+            document.getElementById('btnNext').addEventListener('click', () => {
+                if(state.isRunning) { state.wave++; updateUI(); toast(`Wave ${state.wave} Started`); }
+            });
+            
+            // 音效开关
+            document.getElementById('soundToggle').addEventListener('click', function() {
+                state.soundOn = !state.soundOn;
+                this.textContent = state.soundOn ? '🔊' : '🔇';
+            });
+
+            window.addEventListener('resize', () => { if(state.isRunning) initMap(); });
+        });
+    </script>
+</body>
+</html>
