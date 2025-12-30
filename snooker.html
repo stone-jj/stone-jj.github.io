@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Snooker V27.0 (Game Over Fix)</title>
+    <style>
+        * { box-sizing: border-box; touch-action: none; user-select: none; -webkit-user-select: none; }
+        body {
+            background-color: #0d0d0d;
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: system-ui, sans-serif;
+            overflow: hidden;
+            color: #eee;
+        }
+
+        #ui-header {
+            width: 100%;
+            max-width: 850px;
+            height: 64px;
+            background: #222;
+            border-bottom: 3px solid #d4af37;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 15px;
+            border-radius: 8px 8px 0 0;
+            position: relative;
+        }
+
+        .player-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 70px;
+            opacity: 0.5;
+            transition: all 0.3s;
+        }
+        .player-box.active { opacity: 1; transform: scale(1.05); }
+
+        .score-text { font-size: 28px; font-weight: 800; font-family: monospace; line-height: 1; color: #fff; transition: color 0.2s; }
+        .name-text { font-size: 10px; font-weight: bold; color: #aaa; margin-top: 3px; }
+        
+        .active .score-text { color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.4); }
+        .active .name-text { color: #d4af37; }
+        
+        .score-text.flash-red { color: #ff3333 !important; text-shadow: 0 0 15px red !important; }
+
+        #msg-area { flex: 1; text-align: center; margin: 0 10px; overflow: hidden; }
+        #txt-main { font-size: 15px; font-weight: bold; color: #fff; white-space: nowrap; }
+        #txt-sub { font-size: 11px; color: #888; margin-top: 2px; min-height: 14px; white-space: nowrap; transition: color 0.3s; }
+        .warn-text { color: #ff4444 !important; font-weight: bold; }
+
+        #btn-sound {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            z-index: 100;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #444;
+        }
+        #btn-sound:hover { background: rgba(255,255,255,0.2); }
+        #btn-sound svg { fill: #ddd; width: 20px; height: 20px; }
+
+        #canvas-box {
+            position: relative;
+            width: 100%;
+            max-width: 850px;
+            aspect-ratio: 2 / 1; 
+            background: #000;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+            border-radius: 0 0 8px 8px;
+        }
+        
+        canvas { display: block; width: 100%; height: 100%; }
+
+        /* 游戏结束覆盖层 */
+        #game-over-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            border-radius: 0 0 8px 8px;
+        }
+        #go-title { font-size: 32px; color: #ffd700; font-weight: bold; margin-bottom: 10px; text-shadow: 0 0 20px #ffd700; }
+        #go-score { font-size: 18px; color: #fff; margin-bottom: 20px; }
+        #btn-restart {
+            padding: 10px 30px;
+            background: #d4af37;
+            color: #000;
+            border: none;
+            border-radius: 20px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.6);
+        }
+        #btn-restart:hover { background: #fff; }
+    </style>
+</head>
+<body>
+
+    <div id="ui-header">
+        <div class="player-box" id="panel-p1">
+            <span class="score-text" id="score-p1">0</span>
+            <span class="name-text" id="name-p1">YOU</span>
+        </div>
+        
+        <div id="msg-area">
+            <div id="txt-main">Loading...</div>
+            <div id="txt-sub"></div>
+        </div>
+
+        <div class="player-box" id="panel-cpu" style="margin-right: 40px;">
+            <span class="score-text" id="score-cpu">0</span>
+            <span class="name-text" id="name-cpu">CPU</span>
+        </div>
+
+        <div id="btn-sound" onclick="toggleAudio()">
+            <svg id="icon-on" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+            <svg id="icon-off" viewBox="0 0 24 24" style="display:none"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73 4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+        </div>
+    </div>
+
+    <div id="canvas-box">
+        <canvas id="gameCanvas"></canvas>
+        <div id="game-over-overlay">
+            <div id="go-title">WINNER!</div>
+            <div id="go-score">YOU 0 - 0 CPU</div>
+            <button id="btn-restart" onclick="game.restartGame()">PLAY AGAIN</button>
+        </div>
+    </div>
+
+<script>
+class AudioEngine {
+    constructor() { this.ctx = null; this.enabled = true; }
+    init() {
+        if (!this.ctx && (window.AudioContext || window.webkitAudioContext)) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+    }
+    playHit(force) {
+        if (!this.enabled || !this.ctx) return;
+        let v = Math.min(Math.max(force,0.1),1);
+        let o = this.ctx.createOscillator(), g = this.ctx.createGain();
+        o.type='sine'; o.frequency.setValueAtTime(800+v*400, this.ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime+0.1);
+        g.gain.setValueAtTime(v*0.5, this.ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime+0.1);
+        o.connect(g); g.connect(this.ctx.destination);
+        o.start(); o.stop(this.ctx.currentTime+0.1);
+    }
+    playPot() {
+        if (!this.enabled || !this.ctx) return;
+        let o = this.ctx.createOscillator(), g = this.ctx.createGain();
+        o.type='sine'; o.frequency.setValueAtTime(400, this.ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(50, this.ctx.currentTime+0.4);
+        g.gain.setValueAtTime(0.5, this.ctx.currentTime);
+        g.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime+0.4);
+        o.connect(g); g.connect(this.ctx.destination);
+        o.start(); o.stop(this.ctx.currentTime+0.4);
+    }
+}
+const audio = new AudioEngine();
+function toggleAudio() {
+    audio.enabled = !audio.enabled;
+    document.getElementById('icon-on').style.display = audio.enabled ? 'block' : 'none';
+    document.getElementById('icon-off').style.display = audio.enabled ? 'none' : 'block';
+    if(audio.enabled) audio.init();
+}
+
+const TYPES = { CUE: 0, RED: 1, COLOR: 2 };
+const COLS = {
+    FELT: '#2e7d32', CUSHION: '#1b5e20', WOOD_DARK: '#3e2723', WOOD_LIGHT: '#5d4037', POCKET: '#000000',
+    BALLS: { WHITE:'#f5f5f5', RED:'#cc0000', YELLOW:'#ffcc00', GREEN:'#006633', BROWN:'#663300', BLUE:'#003399', PINK:'#ff9999', BLACK:'#0a0a0a' }
+};
+
+function setText(id, t) { let e=document.getElementById(id); if(e)e.innerText=t; }
+function setClass(id, c, a) { let e=document.getElementById(id); if(e) a?e.classList.add(c):e.classList.remove(c); }
+
+let gameInstance = null;
+window.onload = () => { try { gameInstance = new GameApp(); gameInstance.start(); } catch(e) { alert(e); } };
+
+class GameApp {
+    constructor() {
+        this.LOGICAL_W = 900; this.LOGICAL_H = 450;
+        this.RAIL = 40;
+        this.PLAY_W = this.LOGICAL_W - this.RAIL * 2;
+        this.PLAY_H = this.LOGICAL_H - this.RAIL * 2;
+        this.OFFSET = this.RAIL;
+        this.BAULK_X = this.OFFSET + this.PLAY_W * 0.2;
+        this.CENTER_Y = this.LOGICAL_H / 2;
+        this.D_RADIUS = 60;
+        this.BALL_R = 9.5;
+        this.POCKET_R = 17;
+        
+        this.FRICTION = 0.982;
+        this.WALL_BOUNCE = 0.65;
+        this.MAX_POWER = 25;
+        this.STOP_VEL = 0.035;
+        this.BALL_BOUNCE = 0.92;
+
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        if (!this.ctx.roundRect) this.ctx.roundRect = this.ctx.rect;
+
+        this.balls = []; this.pockets = []; this.whiteBall = null;
+        this.state = {
+            turn: 'P1', phase: 'PLACING', target: 'RED',
+            scoreP1: 0, scoreCpu: 0, redsLeft: 15,
+            msg: "", tempMsg: "", tempMsgTimer: null,
+            whiteFoul: false, firstHit: null, potted: [], mousePos: {x:0, y:0},
+            aiState: 'IDLE', aiAnimStart: 0, aiPower: 0, aiDir: {x:0, y:0},
+            isGameOver: false // 新增游戏结束状态
+        };
+        this.dragStart = null;
+        this.setupLang();
+        
+        // 把 restart 暴露给 global
+        window.game = this;
+    }
+
+    setupLang() {
+        const en = {
+            p1: "YOU", cpu: "CPU",
+            target_red: "Target: RED (1pt)", target_any: "Target: COLOR",
+            target_ball: "Target: ", foul: "FOUL! ", score_plus: "Opponent +",
+            place: "Place Cue Ball in D-Zone", drag: "Drag Back to Shoot",
+            wait: "Rolling...", think: "Thinking...", win: " WIN!",
+            balls: ["", "", "Yellow", "Green", "Brown", "Blue", "Pink", "Black"],
+            play_again: "PLAY AGAIN"
+        };
+        const zh = {
+            p1: "玩家", cpu: "电脑",
+            target_red: "目标: 红球 (1分)", target_any: "目标: 任意彩球",
+            target_ball: "目标: ", foul: "犯规! ", score_plus: "对方 +",
+            place: "请在左侧 D区半圆 点击放球", drag: "向后拖拽球杆击球",
+            wait: "运动中...", think: "电脑思考中...", win: " 获胜!",
+            balls: ["", "", "黄球", "绿球", "棕球", "蓝球", "粉球", "黑球"],
+            play_again: "再来一局"
+        };
+        this.text = (navigator.language || 'en').startsWith('zh') ? zh : en;
+        setText('name-p1', this.text.p1); setText('name-cpu', this.text.cpu);
+        document.getElementById('btn-restart').innerText = this.text.play_again;
+    }
+
+    start() {
+        this.initPockets();
+        this.resetTable();
+        this.handleResize();
+        window.addEventListener('resize', () => this.handleResize());
+        
+        ['mousedown', 'mousemove', 'mouseup', 'touchstart', 'touchmove', 'touchend'].forEach(evt => 
+            window.addEventListener(evt, (e) => {
+                if(evt==='mousedown'||evt==='touchstart') audio.init();
+                this.onInput(evt, e);
+            }, {passive: false})
+        );
+        requestAnimationFrame(() => this.loop());
+    }
+
+    restartGame() {
+        document.getElementById('game-over-overlay').style.display = 'none';
+        this.resetTable();
+    }
+
+    handleResize() {
+        const box = document.getElementById('canvas-box');
+        if (!box) return;
+        const rect = box.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        this.canvas.width = rect.width * dpr;
+        this.canvas.height = rect.height * dpr;
+        this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        this.scaleX = rect.width / this.LOGICAL_W;
+        this.scaleY = rect.height / this.LOGICAL_H;
+    }
+
+    initPockets() {
+        const m = this.RAIL; const cx = this.LOGICAL_W/2; const h = this.LOGICAL_H;
+        this.pockets = [
+            {x:m, y:m}, {x:cx, y:m-5}, {x:this.LOGICAL_W-m, y:m},
+            {x:m, y:h-m}, {x:cx, y:h-m+5}, {x:this.LOGICAL_W-m, y:h-m}
+        ].map(p => ({x:p.x, y:p.y}));
+    }
+
+    resetTable() {
+        this.balls = [];
+        this.whiteBall = this.createBall(0, -999, -999, TYPES.CUE, 4, COLS.BALLS.WHITE);
+        this.whiteBall.active = false; this.balls.push(this.whiteBall);
+
+        const add = (c, v, xr, yo) => 
+            this.balls.push(this.createBall(this.balls.length, this.RAIL + this.PLAY_W*xr, this.CENTER_Y+yo, 2, v, c));
+        const C = COLS.BALLS;
+        add(C.YELLOW, 2, 0.2, this.D_RADIUS); add(C.GREEN, 3, 0.2, -this.D_RADIUS);
+        add(C.BROWN, 4, 0.2, 0); add(C.BLUE, 5, 0.5, 0);
+        add(C.PINK, 6, 0.75, 0); add(C.BLACK, 7, 0.91, 0);
+
+        const startX = this.RAIL + this.PLAY_W * 0.75 + this.BALL_R*2 + 4;
+        let idCounter = 20;
+        for (let c=0; c<5; c++) {
+            for (let r=0; r<=c; r++) {
+                let x = startX + c * (this.BALL_R * 1.74);
+                let y = this.CENTER_Y - (c*this.BALL_R) + (r*this.BALL_R*2.02);
+                this.balls.push(this.createBall(idCounter++, x + Math.random()*0.1, y + Math.random()*0.1, 1, 1, C.RED));
+            }
+        }
+        this.state.redsLeft = 15; this.state.phase = 'PLACING'; this.state.turn = 'P1';
+        this.state.scoreP1 = 0; this.state.scoreCpu = 0; this.state.target = 'RED';
+        this.state.aiState = 'IDLE';
+        this.state.isGameOver = false; // 重置结束状态
+        this.updateUI();
+    }
+
+    createBall(id, x, y, type, val, color) {
+        return { id, x, y, type, val, color, vx: 0, vy: 0, active: true, spotX: type===2?x:null, spotY: type===2?y:null };
+    }
+
+    getLogicPos(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        let cx = e.clientX, cy = e.clientY;
+        if (e.changedTouches && e.changedTouches.length > 0) {
+            cx = e.changedTouches[0].clientX; cy = e.changedTouches[0].clientY;
+        }
+        return { x: (cx - rect.left) / this.scaleX, y: (cy - rect.top) / this.scaleY };
+    }
+
+    onInput(type, e) {
+        if (this.state.isGameOver) return; // 游戏结束禁止输入
+
+        if (type === 'touchstart' || type === 'touchmove') e.preventDefault();
+        const p = this.getLogicPos(e);
+        this.state.mousePos = p;
+        if (this.state.turn !== 'P1') return;
+
+        if (type === 'mousedown' || type === 'touchstart') {
+            if (this.state.phase === 'PLACING') {
+                if (this.isPlaceable(p)) {
+                    this.whiteBall.x = p.x; this.whiteBall.y = p.y;
+                    this.whiteBall.vx=0; this.whiteBall.vy=0; this.whiteBall.active=true;
+                    this.state.phase = 'IDLE'; this.state.subMsg = "";
+                    audio.playHit(0.5); this.updateUI();
+                }
+            } else if (this.state.phase === 'IDLE') {
+                this.dragStart = p;
+            }
+        } else if (type === 'mouseup' || type === 'touchend') {
+            if (this.state.phase === 'IDLE' && this.dragStart) {
+                let dx = this.dragStart.x - p.x, dy = this.dragStart.y - p.y;
+                let len = Math.sqrt(dx*dx + dy*dy);
+                if (len > 10) {
+                    let power = Math.min(len / 5, this.MAX_POWER);
+                    this.shoot(dx/len, dy/len, power);
+                }
+                this.dragStart = null;
+            }
+        }
+    }
+
+    isPlaceable(p) {
+        const m = this.RAIL + this.BALL_R;
+        if (p.x < m || p.x > this.LOGICAL_W-m || p.y < m || p.y > this.LOGICAL_H-m) return false;
+        if (p.x > this.BAULK_X) return false;
+        let dx = p.x - this.BAULK_X, dy = p.y - this.CENTER_Y;
+        if (Math.sqrt(dx*dx + dy*dy) > this.D_RADIUS) return false;
+        return !this.balls.some(b => b.active && b !== this.whiteBall && Math.hypot(b.x-p.x, b.y-p.y) < this.BALL_R*2);
+    }
+
+    shoot(nx, ny, power) {
+        if (power < 0.5) return;
+        this.whiteBall.vx = nx * power; this.whiteBall.vy = ny * power;
+        this.state.phase = 'MOVING';
+        this.state.firstHit = null; this.state.potted = []; this.state.whiteFoul = false;
+        audio.playHit(power / this.MAX_POWER);
+        this.updateUI();
+    }
+
+    updatePhysics() {
+        if (this.state.aiState === 'ANIMATING') return; 
+        if (this.state.phase !== 'MOVING') return;
+        let moving = false;
+        for (let s=0; s<8; s++) {
+            this.balls.forEach(b => {
+                if (!b.active) return;
+                b.x += b.vx; b.y += b.vy; b.vx *= this.FRICTION; b.vy *= this.FRICTION;
+                if (Math.hypot(b.vx, b.vy) > this.STOP_VEL) moving = true; else { b.vx = 0; b.vy = 0; }
+            });
+
+            const minX=this.RAIL+this.BALL_R, maxX=this.LOGICAL_W-this.RAIL-this.BALL_R;
+            const minY=this.RAIL+this.BALL_R, maxY=this.LOGICAL_H-this.RAIL-this.BALL_R;
+            this.balls.forEach(b => {
+                if (!b.active) return;
+                if (b.x < minX) { b.x = minX; b.vx *= -this.WALL_BOUNCE; }
+                else if (b.x > maxX) { b.x = maxX; b.vx *= -this.WALL_BOUNCE; }
+                if (b.y < minY) { b.y = minY; b.vy *= -this.WALL_BOUNCE; }
+                else if (b.y > maxY) { b.y = maxY; b.vy *= -this.WALL_BOUNCE; }
+            });
+
+            for (let i=0; i<this.balls.length; i++) {
+                for (let j=i+1; j<this.balls.length; j++) {
+                    let b1 = this.balls[i], b2 = this.balls[j];
+                    if (!b1.active || !b2.active) continue;
+                    let dx = b1.x - b2.x, dy = b1.y - b2.y;
+                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < this.BALL_R * 2) {
+                        if (this.state.phase === 'MOVING' && !this.state.firstHit) {
+                            if (b1 === this.whiteBall) this.state.firstHit = b2;
+                            else if (b2 === this.whiteBall) this.state.firstHit = b1;
+                        }
+                        let angle = Math.atan2(dy, dx);
+                        let sin = Math.sin(angle), cos = Math.cos(angle);
+                        let vx1 = b1.vx * cos + b1.vy * sin;
+                        let vy1 = b1.vy * cos - b1.vx * sin;
+                        let vx2 = b2.vx * cos + b2.vy * sin;
+                        let vy2 = b2.vy * cos - b2.vx * sin;
+                        let vx1Final = vx2 * this.BALL_BOUNCE;
+                        let vx2Final = vx1 * this.BALL_BOUNCE;
+                        let overlap = (this.BALL_R * 2 - dist) / 2;
+                        b1.x += overlap * Math.cos(angle); b1.y += overlap * Math.sin(angle);
+                        b2.x -= overlap * Math.cos(angle); b2.y -= overlap * Math.sin(angle);
+                        b1.vx = vx1Final * cos - vy1 * sin; b1.vy = vy1 * cos + vx1Final * sin;
+                        b2.vx = vx2Final * cos - vy2 * sin; b2.vy = vy2 * cos + vx2Final * sin;
+                        let impact = Math.abs(vx1 - vx2);
+                        if (impact > 0.3) audio.playHit(impact / 15);
+                    }
+                }
+            }
+
+            this.balls.forEach(b => {
+                if (!b.active) return;
+                for (let p of this.pockets) {
+                    if (Math.hypot(b.x-p.x, b.y-p.y) < this.POCKET_R) {
+                        b.active = false; b.vx=0; b.vy=0;
+                        if (b === this.whiteBall) this.state.whiteFoul = true;
+                        else this.state.potted.push(b);
+                        audio.playPot();
+                        break;
+                    }
+                }
+            });
+        }
+        if (!moving) { this.state.phase = 'IDLE'; this.settleTurn(); }
+    }
+
+    settleTurn() {
+        let foul = false, penalty = 4, turnScore = 0, validPot = false;
+        let isRed = this.state.target === 'RED';
+        if (this.state.whiteFoul) { foul = true; this.whiteBall.active = false; }
+        if (!foul) {
+            if (!this.state.firstHit) foul = true;
+            else {
+                let h = this.state.firstHit;
+                if (isRed && h.type !== 1) { foul = true; penalty = Math.max(4, h.val); }
+                else if (this.state.target === 'COLOR' && h.type === 1) foul = true;
+                else if (typeof this.state.target === 'number' && h.val !== this.state.target) {
+                    foul = true; penalty = Math.max(4, this.state.target, h.val);
+                }
+            }
+        }
+        if (!foul && this.state.potted.length > 0) {
+            for (let b of this.state.potted) {
+                let ok = false;
+                if (isRed && b.type === 1) ok = true;
+                else if (this.state.target === 'COLOR' && b.type === 2) ok = true;
+                else if (typeof this.state.target === 'number' && b.val === this.state.target) ok = true;
+                if (!ok) {
+                    foul = true; let p = Math.max(4, b.val);
+                    if (typeof this.state.target === 'number') p = Math.max(p, this.state.target);
+                    penalty = Math.max(penalty, p);
+                } else turnScore += b.val;
+            }
+            if (!foul) validPot = true;
+        }
+        let reds = this.balls.filter(b => b.type === 1 && b.active).length;
+        this.state.redsLeft = reds;
+        this.state.potted.forEach(b => {
+            if (b.type === 2) { 
+                let respot = (reds > 0) || foul || (typeof this.state.target === 'number' && b.val !== this.state.target);
+                if (reds === 0 && !foul && b.val === this.state.target) respot = false;
+                if (respot) {
+                    b.active = true; b.x = b.spotX; b.y = b.spotY; b.vx=0; b.vy=0;
+                    while(this.balls.some(o => o!==b && o.active && Math.hypot(o.x-b.x, o.y-b.y)<this.BALL_R*2)) b.x += 2;
+                }
+            }
+        });
+        
+        let opp = this.state.turn === 'P1' ? 'scoreCpu' : 'scoreP1';
+        if (foul) {
+            this.state[opp] += penalty;
+            this.showTempMsg(`${this.text.foul} ${this.text.score_plus}${penalty}`);
+            const winScoreEl = document.getElementById(this.state.turn === 'P1' ? 'score-cpu' : 'score-p1');
+            winScoreEl.classList.add('flash-red');
+            setTimeout(() => winScoreEl.classList.remove('flash-red'), 500);
+            this.changeTurn(this.state.whiteFoul);
+        } else if (validPot) {
+            let my = this.state.turn === 'P1' ? 'scoreP1' : 'scoreCpu';
+            this.state[my] += turnScore;
+            if (isRed) this.state.target = 'COLOR';
+            else if (this.state.target === 'COLOR') { if (reds > 0) this.state.target = 'RED'; else this.state.target = 2; }
+            else { 
+                this.state.target++; 
+                if (this.state.target > 7) { this.handleGameOver(); return; } 
+            }
+            this.updateUI();
+            if (this.state.turn === 'CPU') setTimeout(() => this.startAiLogic(), 1000);
+        } else {
+            this.changeTurn(false);
+        }
+    }
+
+    // 修复：游戏结束处理
+    handleGameOver() {
+        this.state.isGameOver = true;
+        this.state.phase = 'IDLE'; // 停止所有动作
+        let winner = this.state.scoreP1 > this.state.scoreCpu ? this.text.p1 : this.text.cpu;
+        
+        document.getElementById('go-title').innerText = winner + this.text.win;
+        document.getElementById('go-score').innerText = `${this.text.p1} ${this.state.scoreP1} - ${this.state.scoreCpu} ${this.text.cpu}`;
+        document.getElementById('game-over-overlay').style.display = 'flex';
+    }
+
+    showTempMsg(msg) {
+        this.state.tempMsg = msg;
+        this.updateUI();
+        if (this.state.tempMsgTimer) clearTimeout(this.state.tempMsgTimer);
+        this.state.tempMsgTimer = setTimeout(() => {
+            this.state.tempMsg = "";
+            this.updateUI();
+        }, 3000);
+    }
+
+    changeTurn(ballInHand) {
+        this.state.turn = (this.state.turn === 'P1') ? 'CPU' : 'P1';
+        if (this.state.redsLeft > 0) this.state.target = 'RED';
+        if (ballInHand) {
+            if (this.state.turn === 'P1') this.state.phase = 'PLACING';
+            else { this.cpuPlaceBall(); this.state.phase = 'IDLE'; }
+        } else {
+            this.state.phase = 'IDLE';
+        }
+        this.updateUI();
+        if (this.state.turn === 'CPU' && this.state.phase === 'IDLE') setTimeout(() => this.startAiLogic(), 1500);
+    }
+
+    cpuPlaceBall() {
+        this.whiteBall.active = true; this.whiteBall.vx=0; this.whiteBall.vy=0;
+        do {
+            let ang = Math.PI/2 + Math.random()*Math.PI; let r = Math.random() * (this.D_RADIUS - this.BALL_R);
+            this.whiteBall.x = this.BAULK_X + Math.cos(ang)*r; this.whiteBall.y = this.CENTER_Y + Math.sin(ang)*r;
+        } while(this.balls.some(b => b!==this.whiteBall && b.active && Math.hypot(b.x-this.whiteBall.x, b.y-this.whiteBall.y) < this.BALL_R*2));
+    }
+
+    startAiLogic() {
+        if (this.state.turn !== 'CPU') return;
+        this.state.aiState = 'THINKING'; 
+        if (!this.whiteBall.active) this.cpuPlaceBall();
+        setTimeout(() => this.cpuCalculate(), 500);
+    }
+
+    cpuCalculate() {
+        if (this.state.isGameOver) return; // 结束不思考
+
+        let targets = this.balls.filter(b => b.active && this.isLegalTarget(b));
+        if (targets.length === 0) {
+            // 如果真的没球打了(比如只剩黑球进了)，触发结束
+            if (this.state.target > 7) this.handleGameOver();
+            return;
+        }
+        
+        // ... (AI 寻路逻辑保持不变)
+        let best = null; let maxScore = -9999;
+        targets.forEach(t => {
+            this.pockets.forEach(p => {
+                let dx = p.x - t.x, dy = p.y - t.y; let dist = Math.hypot(dx, dy);
+                let nx = dx/dist, ny = dy/dist;
+                let gx = t.x - nx * this.BALL_R * 2, gy = t.y - ny * this.BALL_R * 2;
+                let sx = gx - this.whiteBall.x, sy = gy - this.whiteBall.y;
+                let sDist = Math.hypot(sx, sy);
+                let dot = (sx*dx + sy*dy) / (sDist * dist);
+                if (dot > 0) {
+                    let score = 1000 - sDist - dist + t.val*20;
+                    if (score > maxScore) { maxScore = score; best = { x: sx/sDist, y: sy/sDist, p: Math.min(this.MAX_POWER, sDist/15+8) }; }
+                }
+            });
+        });
+
+        if (!best) {
+            let t = targets[0];
+            let dx = t.x - this.whiteBall.x, dy = t.y - this.whiteBall.y;
+            let d = Math.hypot(dx, dy);
+            best = { x: dx/d, y: dy/d, p: 15 };
+        }
+        this.startAiAnimation(best, best.p);
+    }
+
+    startAiAnimation(dir, power) {
+        this.state.aiState = 'ANIMATING';
+        this.state.aiAnimStart = Date.now();
+        this.state.aiDir = { x: dir.x, y: dir.y };
+        this.state.aiPower = power;
+    }
+
+    isLegalTarget(b) {
+        if (b === this.whiteBall) return false;
+        if (this.state.target === 'RED') return b.type === TYPES.RED;
+        if (this.state.target === 'COLOR') return b.type === TYPES.COLOR;
+        return b.val === this.state.target;
+    }
+
+    updateUI() {
+        setClass('panel-p1', 'active', this.state.turn === 'P1');
+        setClass('panel-cpu', 'active', this.state.turn === 'CPU');
+        setText('score-p1', this.state.scoreP1); setText('score-cpu', this.state.scoreCpu);
+        let txt = "";
+        if (this.state.phase === 'PLACING') txt = this.text.place;
+        else if (this.state.turn === 'CPU') txt = this.text.think;
+        else if (this.state.target === 'RED') txt = this.text.target_red;
+        else if (this.state.target === 'COLOR') txt = this.text.target_any;
+        else txt = this.text.target_ball + this.text.balls[this.state.target];
+        setText('txt-main', txt);
+
+        if (this.state.tempMsg) {
+            setText('txt-sub', this.state.tempMsg);
+            document.getElementById('txt-sub').classList.add('warn-text');
+        } else {
+            setText('txt-sub', this.state.phase === 'IDLE' ? this.text.drag : this.text.wait);
+            document.getElementById('txt-sub').classList.remove('warn-text');
+        }
+    }
+
+    drawCue(ctx, startX, startY, dirX, dirY, powerRatio) {
+        let cueDist = 20 + powerRatio * 150;
+        let sx = startX - dirX * cueDist;
+        let sy = startY - dirY * cueDist;
+        let ex2 = sx - dirX * 300;
+        let ey2 = sy - dirY * 300;
+        
+        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex2, ey2);
+        ctx.strokeStyle = "#deb887"; ctx.lineWidth = 6; ctx.lineCap = "round"; ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx-dirX*5, sy-dirY*5);
+        ctx.strokeStyle = "#333"; ctx.lineWidth = 6; ctx.stroke();
+
+        ctx.fillStyle = "#fff"; ctx.font = "bold 12px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.strokeStyle = "#000"; ctx.lineWidth = 2;
+        let pTxt = Math.round(powerRatio * 100) + "%";
+        ctx.strokeText(pTxt, startX, startY - this.BALL_R - 15);
+        ctx.fillText(pTxt, startX, startY - this.BALL_R - 15);
+
+        ctx.beginPath(); 
+        ctx.arc(startX, startY, this.BALL_R+5, -Math.PI/2, -Math.PI/2 + Math.PI*2*powerRatio);
+        ctx.strokeStyle = `hsl(${120-120*powerRatio},100%,50%)`; ctx.lineWidth=3; ctx.stroke();
+    }
+
+    draw() {
+        this.ctx.save(); this.ctx.scale(this.scaleX, this.scaleY);
+        this.ctx.clearRect(0, 0, this.LOGICAL_W, this.LOGICAL_H);
+
+        let wood = this.ctx.createLinearGradient(0, 0, this.LOGICAL_W, 0);
+        wood.addColorStop(0, COLS.WOOD_DARK); wood.addColorStop(0.5, COLS.WOOD_LIGHT); wood.addColorStop(1, COLS.WOOD_DARK);
+        this.ctx.fillStyle = wood; this.ctx.fillRect(0,0,this.LOGICAL_W,this.LOGICAL_H);
+        let felt = this.ctx.createRadialGradient(this.LOGICAL_W/2, this.LOGICAL_H/2, 50, this.LOGICAL_W/2, this.LOGICAL_H/2, this.LOGICAL_W*0.9);
+        felt.addColorStop(0, COLS.FELT); felt.addColorStop(1, '#1b4d24');
+        this.ctx.fillStyle = felt; this.ctx.beginPath(); this.ctx.roundRect(this.RAIL, this.RAIL, this.PLAY_W, this.PLAY_H, 0); this.ctx.fill();
+
+        this.ctx.fillStyle = COLS.POCKET;
+        this.pockets.forEach(p => { this.ctx.beginPath(); this.ctx.arc(p.x, p.y, this.POCKET_R, 0, Math.PI*2); this.ctx.fill(); });
+        this.ctx.strokeStyle = "rgba(255,255,255,0.3)"; this.ctx.lineWidth = 2;
+        this.ctx.beginPath(); this.ctx.moveTo(this.BAULK_X, this.RAIL); this.ctx.lineTo(this.BAULK_X, this.LOGICAL_H-this.RAIL); this.ctx.stroke();
+        this.ctx.beginPath(); this.ctx.arc(this.BAULK_X, this.CENTER_Y, this.D_RADIUS, Math.PI*0.5, Math.PI*1.5); this.ctx.stroke();
+
+        this.balls.forEach(b => {
+            if (!b.active) return;
+            this.ctx.fillStyle = b.color; this.ctx.beginPath(); this.ctx.arc(b.x, b.y, this.BALL_R, 0, Math.PI*2); this.ctx.fill();
+            this.ctx.fillStyle = "rgba(255,255,255,0.3)"; this.ctx.beginPath(); this.ctx.arc(b.x-2, b.y-2, 3, 0, Math.PI*2); this.ctx.fill();
+        });
+
+        if (this.state.phase === 'PLACING' && this.state.turn === 'P1') {
+            let m = this.state.mousePos;
+            if (this.isPlaceable(m)) {
+                this.ctx.globalAlpha = 0.5; this.ctx.fillStyle = '#fff';
+                this.ctx.beginPath(); this.ctx.arc(m.x, m.y, this.BALL_R, 0, Math.PI*2); this.ctx.fill();
+                this.ctx.globalAlpha = 1.0;
+            }
+        }
+
+        if (this.dragStart && this.state.turn === 'P1' && this.state.phase === 'IDLE') {
+            let m = this.state.mousePos;
+            let dx = this.dragStart.x - m.x, dy = this.dragStart.y - m.y;
+            let len = Math.hypot(dx, dy);
+            if (len > 10) {
+                let div = len || 1; let nx = dx/div, ny = dy/div;
+                let ex = this.whiteBall.x + nx * 800, ey = this.whiteBall.y + ny * 800;
+                this.ctx.beginPath(); this.ctx.moveTo(this.whiteBall.x, this.whiteBall.y); this.ctx.lineTo(ex, ey);
+                this.ctx.strokeStyle = "rgba(255,255,255,0.4)"; this.ctx.setLineDash([5,5]); this.ctx.lineWidth=1; this.ctx.stroke(); this.ctx.setLineDash([]);
+                let pwr = Math.min(len/5, this.MAX_POWER) / this.MAX_POWER;
+                this.drawCue(this.ctx, this.whiteBall.x, this.whiteBall.y, nx, ny, pwr);
+            }
+        }
+        
+        if (this.state.turn === 'CPU' && this.state.aiState === 'ANIMATING') {
+            let now = Date.now();
+            let elapsed = now - this.state.aiAnimStart;
+            let duration = 1200; 
+            if (elapsed < duration) {
+                let p = elapsed / duration;
+                let val = Math.sin(p * Math.PI / 2); 
+                let pwrRatio = (this.state.aiPower / this.MAX_POWER) * val;
+                this.drawCue(this.ctx, this.whiteBall.x, this.whiteBall.y, this.state.aiDir.x, this.state.aiDir.y, pwrRatio);
+            } else {
+                this.state.aiState = 'IDLE';
+                this.shoot(this.state.aiDir.x, this.state.aiDir.y, this.state.aiPower);
+            }
+        }
+
+        this.ctx.restore();
+    }
+
+    loop() {
+        this.updatePhysics();
+        this.draw();
+        requestAnimationFrame(() => this.loop());
+    }
+}
+</script>
+</body>
+</html>
