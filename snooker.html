@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Snooker Online (PeerJS P2P)</title>
-    <!-- 引入 PeerJS -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; touch-action: none; user-select: none; -webkit-user-select: none; }
@@ -33,6 +32,7 @@
             padding: 0 15px;
             border-radius: 8px 8px 0 0;
             position: relative;
+            z-index: 10; /* 降低层级，防止遮挡菜单 */
         }
 
         .player-box {
@@ -69,15 +69,17 @@
         }
         canvas { display: block; width: 100%; height: 100%; }
         
-        /* 菜单 UI */
+        /* 菜单遮罩层 - 确保层级最高 */
         #menu-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); display: flex; flex-direction: column;
-            align-items: center; justify-content: center; z-index: 200;
+            background: rgba(13, 13, 13, 0.96); /* 更深的背景，遮挡后面 */
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center; 
+            z-index: 999; /* 确保盖住所有东西 */
             border-radius: 0 0 8px 8px;
             transition: opacity 0.3s;
         }
-        .menu-title { font-size: 32px; color: #fff; margin-bottom: 30px; font-weight: bold; letter-spacing: 2px; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+        .menu-title { font-size: 32px; color: #fff; margin-bottom: 30px; font-weight: bold; letter-spacing: 2px; text-shadow: 0 2px 10px rgba(0,0,0,0.5); text-align: center;}
         .menu-btn {
             background: #d4af37; color: #000; border: none; padding: 14px 30px;
             margin: 10px; font-size: 16px; font-weight: bold; cursor: pointer;
@@ -86,17 +88,14 @@
         .menu-btn:active { transform: scale(0.95); }
         .menu-btn:hover { background: #f0c43f; }
         
-        /* 联机面板 */
         #online-panel { display: none; flex-direction: column; align-items: center; width: 100%; }
         .input-group { margin: 10px 0; display: flex; flex-direction: column; align-items: center; width: 100%; }
         
-        /* ID 显示框优化 */
         #host-id-val {
             font-size: 24px; font-weight: bold; color: #4CAF50; letter-spacing: 2px;
             background: #1a1a1a; border: 2px dashed #444; padding: 15px; width: 260px;
             text-align: center; margin-bottom: 10px; cursor: pointer;
         }
-        /* ID 输入框优化 */
         #join-id-input {
             padding: 12px; border-radius: 4px; border: 1px solid #666; background: #fff; color: #000;
             width: 260px; text-align: center; margin-bottom: 10px; font-family: monospace; font-size: 18px; font-weight: bold;
@@ -104,7 +103,6 @@
         }
         
         .status-msg { color: #aaa; font-size: 13px; margin-top: 5px; min-height: 20px; font-family: sans-serif;}
-        
     </style>
 </head>
 <body>
@@ -116,7 +114,6 @@
         </div>
         
         <div id="msg-area">
-            <!-- 初始不显示 Loading...，等待 JS 填充标题 -->
             <div id="txt-main"></div> 
             <div id="txt-sub"></div>
         </div>
@@ -137,28 +134,28 @@
         <div id="menu-overlay">
             <!-- 主菜单 -->
             <div id="main-menu" style="display:flex; flex-direction:column; align-items:center;">
-                <div class="menu-title" id="menu-title">SNOOKER P2P</div>
-                <button class="menu-btn" id="btn-pvc" onclick="game.startGame('PvCPU')">1 Player vs CPU</button>
-                <button class="menu-btn" id="btn-online" onclick="ui.showOnlineMenu()" style="background:#4CAF50; color:#fff;">Online Multiplayer</button>
+                <div class="menu-title" id="menu-title">SNOOKER</div>
+                <button class="menu-btn" id="btn-pvc" onclick="game.startGame('PvCPU')">Vs CPU</button>
+                <button class="menu-btn" id="btn-online" onclick="ui.showOnlineMenu()" style="background:#4CAF50; color:#fff;">Online</button>
             </div>
 
             <!-- 联机面板 -->
             <div id="online-panel">
-                <div class="menu-title" id="online-title">Online Match</div>
+                <div class="menu-title" id="online-title">Online</div>
                 
                 <div id="host-section" class="input-group">
-                    <button class="menu-btn" id="btn-host" onclick="network.createRoom()">Host Game (Create)</button>
+                    <button class="menu-btn" id="btn-host" onclick="network.createRoom()">Host (Create)</button>
                     <div id="my-id-display" style="display:none; text-align:center; margin-top:5px;">
-                        <span style="color:#aaa; font-size:12px;" id="lbl-host-id">Share this ID:</span><br>
+                        <span style="color:#aaa; font-size:12px;" id="lbl-host-id">Share ID:</span><br>
                         <input type="text" id="host-id-val" readonly onclick="this.select()">
                         <div class="status-msg" id="host-status">...</div>
                     </div>
                 </div>
 
                 <div id="join-section" class="input-group" style="margin-top:20px; border-top:1px solid #444; padding-top:20px;">
-                    <span style="color:#aaa; font-size:12px;" id="lbl-join-id">Or enter friend's ID:</span>
-                    <input type="text" id="join-id-input" placeholder="HOST ID">
-                    <button class="menu-btn" id="btn-join" onclick="network.joinRoom()">Join Game</button>
+                    <span style="color:#aaa; font-size:12px;" id="lbl-join-id">Friend's ID:</span>
+                    <input type="text" id="join-id-input" placeholder="ID">
+                    <button class="menu-btn" id="btn-join" onclick="network.joinRoom()">Join</button>
                     <div class="status-msg" id="join-status"></div>
                 </div>
 
@@ -168,7 +165,7 @@
     </div>
 
 <script>
-// --- 网络模块 (PeerJS Wrapper - Short ID Version) ---
+// --- 网络模块 (ID 生成 & 同步逻辑修复) ---
 class NetworkManager {
     constructor() {
         this.peer = null;
@@ -177,64 +174,40 @@ class NetworkManager {
         this.connected = false;
     }
 
-    // 生成随机 6 位短 ID
     generateShortId() {
-        // 使用随机大写字母和数字，排除容易混淆的字符
         const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; 
         let result = '';
-        for (let i = 0; i < 6; i++) {
-            result += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
+        for (let i = 0; i < 6; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
         return result;
     }
 
     initPeer(customId = null) {
         if (this.peer) return;
-        
-        // 如果传入 customId 则使用它，否则 PeerJS 会自动生成长 ID (这里我们在 createRoom 里强制传入短 ID)
         this.peer = new Peer(customId, { debug: 1 });
-        
         this.peer.on('error', (err) => {
             console.error(err);
-            if (err.type === 'unavailable-id') {
-                // 极小概率 ID 冲突，重新生成
-                this.peer = null;
-                this.createRoom(); 
-            } else {
-                ui.setStatus('host-status', game.text.net_err + err.type);
-                ui.setStatus('join-status', game.text.net_err + err.type);
-            }
+            if (err.type === 'unavailable-id') { this.peer = null; this.createRoom(); } 
+            else { ui.setStatus('host-status', "Error: " + err.type); ui.setStatus('join-status', "Error: " + err.type); }
         });
     }
 
     createRoom() {
-        const shortId = this.generateShortId();
-        this.initPeer(shortId);
-        
+        this.initPeer(this.generateShortId());
         this.isHost = true;
         this.peer.on('open', (id) => {
             document.getElementById('my-id-display').style.display = 'block';
-            document.getElementById('host-id-val').value = id; // 显示短 ID
+            document.getElementById('host-id-val').value = id;
             ui.setStatus('host-status', game.text.room_created);
         });
-
-        this.peer.on('connection', (conn) => {
-            this.handleConnection(conn);
-        });
+        this.peer.on('connection', (conn) => { this.handleConnection(conn); });
     }
 
     joinRoom() {
-        let hostId = document.getElementById('join-id-input').value.trim();
+        let hostId = document.getElementById('join-id-input').value.trim().toUpperCase();
         if(!hostId) return alert(game.text.alert_input_id);
-        
-        // 强制转大写，防止用户输入大小写不一致
-        hostId = hostId.toUpperCase();
-
-        // 加入者不需要自定义 ID，自动生成即可
         this.initPeer(null); 
         this.isHost = false;
         ui.setStatus('join-status', game.text.connecting);
-        
         this.peer.on('open', () => {
             const conn = this.peer.connect(hostId);
             this.handleConnection(conn);
@@ -243,36 +216,24 @@ class NetworkManager {
 
     handleConnection(conn) {
         this.conn = conn;
-        
         this.conn.on('open', () => {
             this.connected = true;
-            console.log("Peer Connected!");
-            
             if(this.isHost) {
                 ui.setStatus('host-status', game.text.friend_joined);
+                // 延迟一点，确保连接稳定后发送开始指令和初始状态
                 setTimeout(() => {
                     game.startGame('ONLINE_HOST');
+                    game.syncToClient(); // 关键修复：房主连接后立即推送一次球桌状态
                 }, 1000);
             } else {
                 ui.setStatus('join-status', game.text.connected_wait);
             }
         });
-
-        this.conn.on('data', (data) => {
-            this.handleData(data);
-        });
-
-        this.conn.on('close', () => {
-            alert(game.text.disconnected);
-            location.reload();
-        });
+        this.conn.on('data', (data) => { this.handleData(data); });
+        this.conn.on('close', () => { alert(game.text.disconnected); location.reload(); });
     }
 
-    send(data) {
-        if (this.connected && this.conn) {
-            this.conn.send(data);
-        }
-    }
+    send(data) { if (this.connected && this.conn) this.conn.send(data); }
 
     handleData(data) {
         switch(data.type) {
@@ -295,7 +256,7 @@ class NetworkManager {
     }
 }
 
-// --- 音频引擎 (保持原样) ---
+// --- 音频引擎 (保持) ---
 class AudioEngine {
     constructor() { this.ctx = null; this.enabled = true; }
     init() { if (!this.ctx) { const AC = window.AudioContext || window.webkitAudioContext; this.ctx = new AC(); } if (this.ctx.state === 'suspended') this.ctx.resume(); }
@@ -363,13 +324,11 @@ const COLS = {
 function setText(id, t) { let e=document.getElementById(id); if(e)e.innerText=t; }
 function setClass(id, c, a) { let e=document.getElementById(id); if(e) a?e.classList.add(c):e.classList.remove(c); }
 
-// 全局实例
 let game = null;
 const network = new NetworkManager();
 
 window.onload = () => { game = new GameApp(); };
 
-// --- 游戏主逻辑 ---
 class GameApp {
     constructor() {
         this.LOGICAL_W = 900; this.LOGICAL_H = 450;
@@ -414,7 +373,7 @@ class GameApp {
 
     setupLang() {
         const en = {
-            game_title: "SNOOKER V29",
+            game_title: "SNOOKER V31",
             p1: "P1", p2: "P2", cpu: "CPU", me: "YOU", opp: "OPPONENT",
             target_red: "Target: RED (1pt)", target_any: "Target: COLOR",
             target_ball: "Target: ", foul: "FOUL! ", score_plus: "Score +",
@@ -422,7 +381,7 @@ class GameApp {
             wait: "Rolling...", think: "Thinking...", win: " WIN!",
             balls: ["", "", "Yellow", "Green", "Brown", "Blue", "Pink", "Black"],
             
-            menu_title: "SNOOKER",
+            menu_title: "SNOOKER P2P",
             btn_pvc: "1 Player vs CPU",
             btn_online: "Online Multiplayer",
             online_title: "Online Match",
@@ -444,7 +403,7 @@ class GameApp {
         };
         
         const zh = {
-            game_title: "斯诺克 V29",
+            game_title: "斯诺克 V31",
             p1: "玩家 1", p2: "玩家 2", cpu: "电脑", me: "我", opp: "对手",
             target_red: "目标: 红球 (1分)", target_any: "目标: 任意彩球",
             target_ball: "目标: ", foul: "犯规! ", score_plus: "加分 +",
@@ -452,7 +411,7 @@ class GameApp {
             wait: "运动中...", think: "电脑思考中...", win: " 获胜!",
             balls: ["", "", "黄球", "绿球", "棕球", "蓝球", "粉球", "黑球"],
             
-            menu_title: "斯诺克",
+            menu_title: "斯诺克对决",
             btn_pvc: "单人 vs 电脑",
             btn_online: "在线双人联机",
             online_title: "联机对战",
@@ -475,7 +434,7 @@ class GameApp {
         
         this.text = (navigator.language || 'en').startsWith('zh') ? zh : en;
         
-        // 初始设置头部标题，替换掉 Loading...
+        // 设置头部标题，避免显示 Loading
         setText('txt-main', this.text.game_title);
         
         // 应用翻译
@@ -500,19 +459,23 @@ class GameApp {
         let p2Name = (mode === 'PvCPU') ? this.text.cpu : this.text.p2;
 
         if (mode === 'ONLINE_HOST') {
-            p1Name = this.text.me + " (房主)";
+            p1Name = this.text.me + " (Host)";
             p2Name = this.text.opp;
             network.send({ type: 'START_GAME' });
         } else if (mode === 'ONLINE_CLIENT') {
-            p1Name = this.text.opp + " (房主)";
+            p1Name = this.text.opp + " (Host)";
             p2Name = this.text.me;
         }
 
         setText('name-p1', p1Name);
         setText('name-p2', p2Name);
         
-        if (mode !== 'ONLINE_CLIENT') {
+        // 关键修复：客户端不进行 resetTable，等待 Host 同步
+        if (mode === 'ONLINE_CLIENT') {
+            this.balls = []; // 清空球，等待同步
+        } else {
             this.resetTable();
+            // Host 模式下，如果已经连接，立即同步
             if (mode === 'ONLINE_HOST') this.syncToClient();
         }
     }
@@ -552,8 +515,13 @@ class GameApp {
     // --- 网络同步相关 ---
     syncToClient() {
         if (this.state.mode !== 'ONLINE_HOST' || !network.connected) return;
+        
+        // 确保发送完整数据以便客户端重建
         const payload = {
-            balls: this.balls.map(b => ({id:b.id, x:b.x, y:b.y, vx:b.vx, vy:b.vy, active:b.active})),
+            balls: this.balls.map(b => ({
+                id:b.id, x:b.x, y:b.y, type:b.type, val:b.val, color:b.color,
+                vx:b.vx, vy:b.vy, active:b.active
+            })),
             scoreP1: this.state.scoreP1, scoreP2: this.state.scoreP2,
             turn: this.state.turn, phase: this.state.phase, target: this.state.target,
             whiteFoul: this.state.whiteFoul, redsLeft: this.state.redsLeft
@@ -562,11 +530,26 @@ class GameApp {
     }
 
     applySyncState(data) {
-        data.balls.forEach(rb => {
-            let lb = this.balls.find(b => b.id === rb.id);
-            if (lb) { lb.x = rb.x; lb.y = rb.y; lb.vx = rb.vx; lb.vy = rb.vy; lb.active = rb.active; }
-        });
+        // 如果本地没有球（如刚加入游戏），直接根据数据重建
+        if (this.balls.length === 0 && data.balls.length > 0) {
+            this.balls = data.balls.map(b => ({
+                id:b.id, x:b.x, y:b.y, type:b.type, val:b.val, color:b.color,
+                vx:b.vx, vy:b.vy, active:b.active,
+                spotX: (b.type === 2 ? b.x : null), spotY: (b.type === 2 ? b.y : null)
+            }));
+        } else {
+            // 否则更新现有球的位置
+            data.balls.forEach(rb => {
+                let lb = this.balls.find(b => b.id === rb.id);
+                if (lb) { 
+                    lb.x = rb.x; lb.y = rb.y; lb.vx = rb.vx; lb.vy = rb.vy; lb.active = rb.active; 
+                }
+            });
+        }
+        
+        // 更新白球引用
         this.whiteBall = this.balls.find(b => b.type === TYPES.CUE);
+        
         this.state.scoreP1 = data.scoreP1; this.state.scoreP2 = data.scoreP2;
         this.state.turn = data.turn; this.state.phase = data.phase;
         this.state.target = data.target; this.state.redsLeft = data.redsLeft;
