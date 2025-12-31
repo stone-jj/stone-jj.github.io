@@ -2,12 +2,11 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <!-- 视口设置：禁止缩放，适配刘海屏 -->
+    <!-- 核心：禁止缩放，适配刘海屏 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Snooker V41 Mobile</title>
+    <title>Snooker V42 Mobile</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        /* 全局重置 */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
         body {
@@ -19,167 +18,151 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            /* 竖屏时靠上，横屏时居中 */
+            justify-content: flex-start; 
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            overflow: hidden; /* 禁止页面滚动 */
+            overflow: hidden;
             color: #eee;
         }
 
-        /* 顶部计分板 */
+        /* 顶部计分板 - 自适应高度 */
         #ui-header {
             width: 100%;
             max-width: 850px;
-            height: 50px; /* 稍微调小以适应手机 */
+            height: 60px;
             background: #1e1e1e;
-            border-bottom: 3px solid #d4af37;
+            border-bottom: 2px solid #d4af37;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0 15px;
-            border-radius: 0 0 8px 8px;
-            position: relative;
+            padding: 0 10px;
             z-index: 10;
-            flex-shrink: 0; /* 防止被挤压 */
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            flex-shrink: 0;
         }
 
-        .player-box { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 60px; opacity: 0.4; transition: all 0.3s; }
-        .player-box.active { opacity: 1; transform: scale(1.1); }
+        .player-box {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-width: 50px; opacity: 0.5; transition: all 0.3s;
+        }
+        .player-box.active { opacity: 1; transform: scale(1.05); }
+        
         .score-text { font-size: 24px; font-weight: 800; font-family: monospace; line-height: 1; color: #fff; }
-        .name-text { font-size: 10px; font-weight: bold; color: #aaa; margin-top: 2px; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .name-text { font-size: 10px; font-weight: bold; color: #aaa; margin-top: 2px; max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .active .score-text { color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.6); }
         .active .name-text { color: #d4af37; }
 
         #msg-area { flex: 1; text-align: center; margin: 0 5px; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
-        #txt-main { font-size: 14px; font-weight: bold; color: #fff; white-space: nowrap; letter-spacing: 1px; }
+        #txt-main { font-size: 14px; font-weight: bold; color: #fff; white-space: nowrap; }
         #txt-sub { font-size: 10px; color: #888; min-height: 14px; white-space: nowrap; }
         .warn-text { color: #ff4444 !important; font-weight: bold; animation: flash 0.5s; }
-        @keyframes flash { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 
         #btn-sound {
-            width: 32px; height: 32px; cursor: pointer;
+            width: 30px; height: 30px; cursor: pointer;
             background: rgba(255,255,255,0.1); border-radius: 50%; border: 1px solid #444;
             display: flex; align-items: center; justify-content: center;
         }
-        #btn-sound svg { fill: #ddd; width: 18px; height: 18px; }
+        #btn-sound svg { fill: #ddd; width: 16px; height: 16px; }
 
-        /* 游戏区域容器 */
+        /* 游戏容器 - 核心适配 */
         #game-container {
             position: relative;
             width: 100%;
-            max-width: 850px;
-            /* 保持宽高比，或者在手机上自适应高度 */
-            flex: 1; 
+            flex: 1; /* 占据剩余空间 */
             display: flex;
-            align-items: center;
+            align-items: center; 
             justify-content: center;
             overflow: hidden;
+            padding: 10px; /* 留出一点边距 */
         }
 
         #canvas-box {
-            position: relative; 
-            width: 100%; 
-            aspect-ratio: 2/1; /* 强制比例 */
+            position: relative;
             background: #000; 
-            box-shadow: 0 20px 50px rgba(0,0,0,0.8); 
-            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8); 
+            border-radius: 4px;
+            /* 默认宽度为 100% 或者最大 850px */
+            width: 100%;
+            max-width: 850px;
+            /* 维持 2:1 比例 */
+            aspect-ratio: 2/1;
         }
+
+        canvas { display: block; width: 100%; height: 100%; border-radius: 4px; touch-action: none; }
         
-        /* 关键：Canvas 必须设置 touch-action: none 防止浏览器默认滚动 */
-        canvas { 
-            display: block; 
-            width: 100%; 
-            height: 100%; 
-            border-radius: 8px; 
-            touch-action: none; 
-        }
-        
-        /* === 菜单系统 === */
+        /* === 菜单系统 (响应式) === */
         #menu-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(18, 18, 18, 0.98); 
+            background: rgba(18, 18, 18, 0.96); 
             display: flex; flex-direction: column;
             align-items: center; justify-content: center; 
             z-index: 100;
-            border-radius: 8px;
-            padding: 20px;
+            padding: 15px;
+            border-radius: 4px;
         }
 
         .hidden { display: none !important; }
 
+        /* 菜单容器：支持滚动，防止竖屏溢出 */
         .menu-container {
             display: flex; flex-direction: column; align-items: center; width: 100%;
-            overflow-y: auto; -webkit-overflow-scrolling: touch;
+            max-height: 100%; overflow-y: auto; 
+            padding: 10px 0;
         }
 
-        .menu-logo { font-size: 28px; color: #d4af37; margin-bottom: 20px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; }
+        .menu-logo { font-size: 26px; color: #d4af37; margin-bottom: 15px; font-weight: 900; letter-spacing: 2px; }
         
         .menu-btn {
             background: linear-gradient(135deg, #d4af37, #aa8c2c); 
             color: #000; border: none; padding: 12px 0;
-            margin: 6px 0; font-size: 16px; font-weight: bold; cursor: pointer;
-            border-radius: 6px; width: 220px;
+            margin: 6px 0; font-size: 15px; font-weight: bold; cursor: pointer;
+            border-radius: 6px; width: 80%; max-width: 240px; /* 宽度自适应 */
             box-shadow: 0 3px 5px rgba(0,0,0,0.3);
-            /* 关键：允许按钮的触摸操作 */
-            touch-action: manipulation; 
+            /* 确保手机可点 */
+            pointer-events: auto;
         }
-        .menu-btn:active { transform: scale(0.96); opacity: 0.8; }
-        .btn-secondary { background: #444; color: #fff; margin-top: 10px; }
+        .menu-btn:active { transform: scale(0.96); opacity: 0.9; }
+        .btn-secondary { background: #444; color: #fff; margin-top: 15px; }
         
         .input-group { margin-bottom: 10px; text-align: center; width: 100%; display: flex; flex-direction: column; align-items: center; }
-        .input-label { color: #888; font-size: 12px; margin-bottom: 4px; }
+        .input-label { color: #888; font-size: 12px; margin-bottom: 3px; }
         .input-styled {
             padding: 10px; border-radius: 6px; border: 2px solid #333; 
-            background: #222; color: #fff; width: 220px; 
+            background: #222; color: #fff; width: 80%; max-width: 240px;
             text-align: center; font-size: 16px; outline: none; 
-            touch-action: manipulation;
         }
         .input-styled:focus { border-color: #d4af37; }
 
         #host-id-display {
             display: none; background: #1a1a1a; border: 1px dashed #555; 
-            padding: 10px; border-radius: 8px; margin: 5px 0; width: 220px; text-align: center;
+            padding: 10px; border-radius: 8px; margin: 5px 0; width: 85%; max-width: 260px; text-align: center;
             cursor: pointer;
         }
         #host-id-val {
-            font-size: 20px; font-weight: bold; color: #4CAF50; letter-spacing: 2px;
+            font-size: 24px; font-weight: bold; color: #4CAF50; letter-spacing: 2px;
             background: transparent; border: none; width: 100%; text-align: center; 
             pointer-events: none; margin-top: 2px;
         }
         
         .status-msg { color: #aaa; font-size: 12px; margin-top: 5px; min-height: 18px; }
 
-        /* 断线提示层 */
         #disconnect-modal {
             display: none; position: absolute; top:0; left:0; width:100%; height:100%;
             background: rgba(0,0,0,0.95); z-index: 200;
             flex-direction: column; align-items: center; justify-content: center;
         }
         .err-title { color: #ff4444; font-size: 20px; font-weight: bold; margin-bottom: 10px; }
-
-        /* === 竖屏提示层 === */
-        #portrait-warning {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; z-index: 9999;
-            flex-direction: column; align-items: center; justify-content: center; text-align: center;
-            padding: 20px;
-        }
-        #portrait-warning svg { width: 64px; height: 64px; fill: #d4af37; margin-bottom: 20px; animation: rotatePhone 2s infinite; }
-        #portrait-warning p { color: #fff; font-size: 18px; font-weight: bold; }
         
-        /* 仅在竖屏时显示提示 */
-        @media screen and (orientation: portrait) {
-            #portrait-warning { display: flex; }
+        /* 横屏优化：当高度太小时 */
+        @media (max-height: 400px) {
+            #ui-header { height: 40px; }
+            .score-text { font-size: 18px; }
+            .menu-logo { font-size: 20px; margin-bottom: 5px; }
+            .menu-btn { padding: 8px 0; margin: 4px 0; font-size: 14px; }
         }
-        @keyframes rotatePhone { 0% { transform: rotate(0deg); } 25% { transform: rotate(-90deg); } 50% { transform: rotate(-90deg); } 75% { transform: rotate(0deg); } 100% { transform: rotate(0deg); } }
     </style>
 </head>
 <body>
-
-    <!-- 竖屏强制横屏提示 -->
-    <div id="portrait-warning">
-        <svg viewBox="0 0 24 24"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/></svg>
-        <p>请旋转手机至横屏<br>Please Rotate Device</p>
-    </div>
 
     <div id="ui-header">
         <div class="player-box" id="panel-p1">
@@ -230,7 +213,7 @@
                             <div class="status-msg" id="host-status">...</div>
                         </div>
                     </div>
-                    <div class="divider"></div>
+                    <div style="width: 50%; height: 1px; background: #333; margin: 10px 0;"></div>
                     <div class="input-group">
                         <div class="input-label" id="lbl-join-id">Enter Friend's ID:</div>
                         <input type="text" id="join-id-input" class="input-styled" placeholder="ID" style="text-transform:uppercase;">
@@ -266,17 +249,39 @@ const ui = {
     showDisconnect: () => { document.getElementById('disconnect-modal').style.display = 'flex'; }
 };
 
-// 网络管理
+// 网络管理 (增强版连接配置)
 class NetworkManager {
     constructor() { this.peer = null; this.conn = null; this.isHost = false; this.connected = false; this.opponentName = "Opponent"; }
     generateShortId() { const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let r=''; for(let i=0;i<6;i++)r+=c.charAt(Math.floor(Math.random()*c.length)); return r; }
+    
+    // 配置公共 STUN 服务器，提高连接成功率
     initPeer(customId=null) {
-        if(this.peer)return; this.peer=new Peer(customId,{debug:1});
-        this.peer.on('error',(err)=>{ if(err.type==='unavailable-id'){this.peer=null;this.createRoom();}else{ui.setStatus('host-status',"Err:"+err.type);ui.setStatus('join-status',"Err:"+err.type);} });
+        if(this.peer)return; 
+        this.peer = new Peer(customId, {
+            debug: 1,
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:global.stun.twilio.com:3478' }
+                ]
+            }
+        });
+        
+        this.peer.on('error',(err)=>{ 
+            console.error(err);
+            if(err.type==='unavailable-id'){this.peer=null;this.createRoom();}
+            else{
+                let msg = "Err: " + err.type;
+                if(err.type === 'peer-unavailable') msg = "ID Not Found / Offline";
+                ui.setStatus('host-status',msg); ui.setStatus('join-status',msg);
+            } 
+        });
         this.peer.on('disconnected',()=>{if(this.connected)ui.showDisconnect();});
     }
+
     createRoom() { this.initPeer(this.generateShortId()); this.isHost=true; this.peer.on('open',(id)=>{document.getElementById('host-id-display').style.display='block';document.getElementById('host-id-val').value=id;ui.setStatus('host-status',game.text.status_wait);}); this.peer.on('connection',(c)=>{this.handleConnection(c);}); }
     joinRoom() { let id=document.getElementById('join-id-input').value.trim().toUpperCase(); if(!id)return alert(game.text.alert_input_id); this.initPeer(null); this.isHost=false; ui.setStatus('join-status',game.text.connecting); this.peer.on('open',()=>{this.handleConnection(this.peer.connect(id));}); }
+    
     handleConnection(conn) {
         this.conn=conn; const name=document.getElementById('my-name-input').value||game.text.default_player;
         this.conn.on('open',()=>{this.connected=true;this.send({type:'NAME_HANDSHAKE',name:name});});
@@ -296,7 +301,6 @@ class NetworkManager {
     copyId() { const e=document.getElementById('host-id-val'); e.select(); e.setSelectionRange(0,99999); navigator.clipboard.writeText(e.value).then(()=>{ui.setStatus('host-status',game.text.id_copied);setTimeout(()=>ui.setStatus('host-status',game.text.status_wait),2000);}); }
 }
 
-// 音频
 const audio = {
     ctx: null, enabled: true,
     init: function() { if(!this.ctx){ this.ctx = new (window.AudioContext||window.webkitAudioContext)(); } if(this.ctx.state==='suspended')this.ctx.resume(); },
@@ -343,23 +347,27 @@ class GameApp {
         this.dragStart = null; this.setupLang(); this.initPockets(); this.handleResize();
         window.addEventListener('resize', () => this.handleResize());
         
-        // 关键修复：事件监听区分
-        // 1. 按钮点击事件由浏览器默认处理，不在此监听
-        // 2. 只有触摸 Canvas 时，才进行游戏逻辑处理
-        const eventHandler = (e) => {
-            // 如果点的是按钮，直接忽略，让浏览器处理点击
-            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.closest('.menu-btn')) return;
+        // 移动端操作修复：分离 UI 与 Canvas 事件
+        const startHandler = (e) => {
+            // 如果点的是 UI 元素，不做处理，让它触发点击
+            if (e.target.closest('.menu-btn') || e.target.tagName === 'INPUT') return;
             
-            // 初始化音频
-            if(e.type === 'mousedown' || e.type === 'touchstart') audio.init();
-            
+            // 如果点的是 Canvas 区域，则拦截默认行为（防止滚动）并初始化游戏逻辑
+            e.preventDefault(); 
+            audio.init(); 
             this.onInput(e.type, e);
         };
-
-        ['mousedown', 'mousemove', 'mouseup', 'touchstart', 'touchmove', 'touchend'].forEach(evt => 
-            window.addEventListener(evt, eventHandler, {passive: false})
-        );
         
+        // 绑定 Canvas 操作
+        this.canvas.addEventListener('mousedown', startHandler);
+        this.canvas.addEventListener('touchstart', startHandler, {passive: false});
+        
+        // 绑定移动和结束事件到 window，保证拖拽流畅
+        window.addEventListener('mousemove', e => this.onInput(e.type, e));
+        window.addEventListener('mouseup', e => this.onInput(e.type, e));
+        window.addEventListener('touchmove', e => { if(this.dragStart) e.preventDefault(); this.onInput(e.type, e); }, {passive: false});
+        window.addEventListener('touchend', e => this.onInput(e.type, e));
+
         requestAnimationFrame(() => this.loop());
     }
 
@@ -367,12 +375,12 @@ class GameApp {
         const zh = {
             default_p1: "玩家 1", default_p2: "玩家 2", default_player: "玩家", cpu: "电脑", me: "我", opp: "对手",
             target_red: "目标: 红球 (1分)", target_any: "目标: 任意彩球", target_ball: "目标: ",
-            foul: "犯规! ", score_plus: "加分 +", place: "D区半圆内点击放球", drag: "拖拽击球", wait_opp: "对方回合...",
+            foul: "犯规! ", score_plus: "加分 +", place: "D区内放球", drag: "拖拽击球", wait_opp: "对方回合...",
             think: "电脑思考中...", shooting: "电脑击球中...",
             wait: "运动中...", win: " 获胜!",
             menu_title: "斯诺克对决", btn_pvc: "单人 vs 电脑", btn_online: "在线双人联机", online_title: "联机对战",
-            btn_host: "我是房主 (创建)", lbl_host_id: "点击 ID 复制给好友:", status_wait: "等待连接...", id_copied: "已复制!",
-            lbl_join_id: "或者输入好友的 ID:", btn_join: "加入游戏", btn_back: "返回",
+            btn_host: "我是房主 (创建)", lbl_host_id: "点击 ID 复制:", status_wait: "等待连接...", id_copied: "已复制!",
+            lbl_join_id: "或输入好友 ID:", btn_join: "加入游戏", btn_back: "返回",
             lbl_your_name: "你的名字", ph_your_name: "名字或昵称",
             net_err: "连接错误: ", room_created: "房间已创建，等待好友...", friend_joined: "好友已连接！",
             connecting: "正在连接...", connected_wait: "连接成功！", disconnected: "连接已断开", err_desc: "连接意外中断或对方已离开", btn_reload: "重新加载", alert_input_id: "请输入房主 ID",
@@ -433,15 +441,17 @@ class GameApp {
     }
 
     isMyTurn() { if (this.state.mode === 'PvCPU') return this.state.turn === 'P1'; if (this.state.mode === 'ONLINE_HOST') return this.state.turn === 'P1'; if (this.state.mode === 'ONLINE_CLIENT') return this.state.turn === 'P2'; return false; }
-    getLogicPos(e) { const r = this.canvas.getBoundingClientRect(); let cx = e.clientX, cy = e.clientY; if (e.changedTouches && e.changedTouches.length > 0) { cx = e.changedTouches[0].clientX; cy = e.changedTouches[0].clientY; } return { x: (cx - r.left) / this.scaleX, y: (cy - r.top) / this.scaleY }; }
+    getLogicPos(e) { 
+        const r = this.canvas.getBoundingClientRect(); 
+        let cx = e.clientX, cy = e.clientY; 
+        if (e.changedTouches && e.changedTouches.length > 0) { cx = e.changedTouches[0].clientX; cy = e.changedTouches[0].clientY; } 
+        return { x: (cx - r.left) / this.scaleX, y: (cy - r.top) / this.scaleY }; 
+    }
 
     onInput(type, e) {
-        // 关键修复：如果是 Canvas，则阻止默认行为（滚动）；如果是按钮，则放行
-        if (e.target === this.canvas && type.startsWith('touch')) {
-            e.preventDefault();
-        }
-
-        const p = this.getLogicPos(e); this.state.mousePos = p;
+        // 事件已经在全局监听器中筛选过，这里直接处理逻辑
+        const p = this.getLogicPos(e); 
+        this.state.mousePos = p;
         if (!this.isMyTurn()) return;
 
         if (type === 'mousedown' || type === 'touchstart') {
@@ -457,7 +467,7 @@ class GameApp {
     confirmPlacement(remote) { this.whiteBall.vx=0; this.whiteBall.vy=0; this.whiteBall.active=true; this.state.phase = 'IDLE'; this.state.tempMsg = ""; audio.playHit(0.5); this.updateUI(); if (this.state.mode === 'ONLINE_HOST' && !remote) this.syncToClient(); }
     isPlaceable(p) { const m = 48.5; if (p.x<m || p.x>900-m || p.y<m || p.y>450-m || p.x>204) return false; return Math.hypot(p.x-204, p.y-225) <= 60 && !this.balls.some(b => b.active && b!==this.whiteBall && Math.hypot(b.x-p.x, b.y-p.y) < 17); }
     executeShoot(nx, ny, p, remote) { 
-        if (isNaN(nx) || isNaN(ny) || isNaN(p)) { nx = 1; ny = 0; p = 1; } // Safety fallback
+        if (isNaN(nx) || isNaN(ny) || isNaN(p)) { nx = 1; ny = 0; p = 1; } 
         this.whiteBall.vx = nx * p; this.whiteBall.vy = ny * p; this.state.phase = 'MOVING'; this.state.firstHit = null; this.state.potted = []; this.state.whiteFoul = false; audio.playHit(p/25); this.updateUI(); if (!remote && network.connected) network.send({ type: 'SHOOT', nx, ny, power: p }); 
     }
 
@@ -465,19 +475,16 @@ class GameApp {
         if (this.state.aiState === 'ANIMATING') return; 
         if (this.state.phase !== 'MOVING') return;
         
-        // 1. 先进行物理迭代
-        for (let s=0; s<8; s++) {
+        let moving = false;
+        // 增加迭代次数以提高精度，防止穿墙
+        for (let s=0; s<10; s++) {
             this.balls.forEach(b => { 
                 if (!b.active) return; 
                 b.x += b.vx; b.y += b.vy; 
-                b.vx *= 0.978; b.vy *= 0.978; 
-                
-                // 增加：如果速度极小，强制归零，防止浮点数震荡
-                if(Math.abs(b.vx) < 0.005) b.vx = 0;
-                if(Math.abs(b.vy) < 0.005) b.vy = 0;
+                b.vx *= 0.985; b.vy *= 0.985; // 稍微增加阻力
+                if(Math.abs(b.vx) < 0.01) b.vx = 0;
+                if(Math.abs(b.vy) < 0.01) b.vy = 0;
             });
-            
-            // 碰撞检测逻辑保持不变
             const m = 48.5; 
             this.balls.forEach(b => { if(!b.active)return; if(b.x<m){b.x=m;b.vx*=-0.65;audio.playCushion(Math.hypot(b.vx,b.vy)/10);} else if(b.x>900-m){b.x=900-m;b.vx*=-0.65;audio.playCushion(Math.hypot(b.vx,b.vy)/10);} if(b.y<m){b.y=m;b.vy*=-0.65;audio.playCushion(Math.hypot(b.vx,b.vy)/10);} else if(b.y>450-m){b.y=450-m;b.vy*=-0.65;audio.playCushion(Math.hypot(b.vx,b.vy)/10);} });
             
@@ -493,13 +500,12 @@ class GameApp {
             this.balls.forEach(b => { if(!b.active)return; for(let p of this.pockets) if(Math.hypot(b.x-p.x, b.y-p.y)<16) { b.active=false; b.vx=0; b.vy=0; if(b===this.whiteBall)this.state.whiteFoul=true; else this.state.potted.push(b); audio.playPot(); break; } });
         }
 
-        // 2. 检查是否所有球都真的停了 (Velocity Threshold Check)
+        // 外层检测：只要有一个球有速度，就认为在运动
         let isAnyBallMoving = false;
         this.balls.forEach(b => {
-            if(b.active && Math.hypot(b.vx, b.vy) > 0.035) isAnyBallMoving = true;
+            if(b.active && Math.hypot(b.vx, b.vy) > 0.02) isAnyBallMoving = true;
         });
 
-        // 3. 只有当确实没有球在动时，才切换状态
         if (!isAnyBallMoving) { 
             this.state.phase = 'IDLE'; 
             if (this.state.mode === 'ONLINE_HOST' || !this.state.mode.startsWith('ONLINE')) {
@@ -603,16 +609,13 @@ class GameApp {
             }
             this.startAiAnimation(best, best.p);
         } catch(e) {
-            // AI 出错保护：随机击球
             this.startAiAnimation({x: Math.random(), y: Math.random()}, 10);
         }
     }
     
     startAiAnimation(dir, power) { 
-        // 参数清洗
         let dx = dir.x || 1; let dy = dir.y || 0; let p = power || 5;
         if(isNaN(dx) || isNaN(dy)) { dx=1; dy=0; }
-        
         this.state.aiState = 'ANIMATING'; 
         this.state.aiAnimStart = Date.now(); 
         this.state.aiDir = { x: dx, y: dy }; 
@@ -626,7 +629,6 @@ class GameApp {
         if (!this.isMyTurn() && this.state.mode.startsWith('ONLINE')) txt = this.text.wait_opp;
         else if (this.state.phase === 'PLACING') txt = this.text.place;
         else if (this.state.mode === 'PvCPU' && this.state.turn === 'P2') {
-            // 修复：只要在移动中，就优先显示 Wait (Rolling)，防止玩家误以为卡在 Thinking
             if (this.state.phase === 'MOVING') txt = this.text.wait;
             else txt = (this.state.aiState === 'ANIMATING') ? this.text.shooting : this.text.think;
         }
