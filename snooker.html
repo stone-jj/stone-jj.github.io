@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Snooker V44 Compact</title>
+    <title>Snooker V45 Portrait</title>
     <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -15,67 +15,72 @@
             margin: 0;
             padding: 0;
             display: flex;
-            align-items: center; /* 垂直居中 */
-            justify-content: center; /* 水平居中 */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center; /* 居中显示 */
             font-family: 'Segoe UI', Roboto, sans-serif;
             overflow: hidden;
             color: #eee;
         }
 
-        /* === 核心容器：包裹计分板和球桌，确保紧贴 === */
+        /* === 主容器 === */
         #main-wrapper {
-            width: 100%;
-            max-width: 850px; /* 限制最大宽度 */
+            /* 关键修改：允许宽度占满屏幕，不再强制固定宽度 */
+            width: 98vw; 
+            max-width: 850px; 
             display: flex;
             flex-direction: column;
-            /* 添加一点阴影增加立体感 */
-            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
-            /* 确保在小屏幕上有边距 */
-            margin: 10px; 
+            box-shadow: 0 5px 20px rgba(0,0,0,0.8);
         }
 
-        /* 1. 顶部计分板 */
+        /* 1. 顶部计分板 (适配窄屏) */
         #ui-header {
             width: 100%;
-            height: 48px; /* 固定高度 */
+            height: 50px;
             background: #1a1a1a;
             border-bottom: 2px solid #d4af37;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0 15px;
-            /* 圆角：只圆上面 */
+            padding: 0 8px; /* 减小内边距 */
             border-radius: 8px 8px 0 0;
             position: relative;
             z-index: 20;
         }
 
-        .player-box { display: flex; flex-direction: column; align-items: center; min-width: 60px; opacity: 0.5; transition: 0.3s; }
-        .player-box.active { opacity: 1; transform: scale(1.05); }
-        .score-text { font-size: 22px; font-weight: 800; line-height: 1; color: #fff; }
-        .name-text { font-size: 10px; font-weight: bold; color: #aaa; margin-top: 2px; }
+        .player-box { display: flex; flex-direction: column; align-items: center; min-width: 45px; opacity: 0.5; transition: 0.3s; }
+        .player-box.active { opacity: 1; transform: scale(1.1); }
+        
+        /* 字体在手机上调小 */
+        .score-text { font-size: 20px; font-weight: 800; line-height: 1; color: #fff; }
+        .name-text { font-size: 10px; font-weight: bold; color: #aaa; margin-top: 2px; max-width: 60px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        
         .active .score-text { color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
         .active .name-text { color: #d4af37; }
 
         #msg-area { flex: 1; text-align: center; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
-        #txt-main { font-size: 13px; font-weight: bold; color: #fff; }
-        #txt-sub { font-size: 10px; color: #888; }
+        #txt-main { font-size: 12px; font-weight: bold; color: #fff; white-space: nowrap; }
+        #txt-sub { font-size: 10px; color: #888; height: 12px; white-space: nowrap; }
         
-        #btn-sound { width: 30px; height: 30px; background: rgba(255,255,255,0.1); border-radius: 50%; border: 1px solid #444; display: flex; align-items: center; justify-content: center; }
-        #btn-sound svg { fill: #ddd; width: 16px; height: 16px; }
+        /* 状态颜色动画 */
+        .text-red { color: #ff4444 !important; font-weight: bold; animation: pop 0.3s; }
+        .text-green { color: #00e676 !important; font-weight: bold; animation: pop 0.3s; }
+        @keyframes pop { 50% { transform: scale(1.2); } }
 
-        /* 2. 画布容器 */
+        #btn-sound { width: 28px; height: 28px; background: rgba(255,255,255,0.1); border-radius: 50%; border: 1px solid #444; display: flex; align-items: center; justify-content: center; }
+        #btn-sound svg { fill: #ddd; width: 14px; height: 14px; }
+
+        /* 2. 画布容器 (核心自适应) */
         #canvas-box {
             position: relative;
             background: #000;
-            width: 100%;
-            /* 强制 2:1 比例 */
-            aspect-ratio: 2/1; 
-            /* 圆角：只圆下面 */
+            width: 100%; /* 跟随父容器宽度，父容器是 98vw */
+            aspect-ratio: 2/1; /* 锁定宽高比，高度会自动根据宽度计算 */
             border-radius: 0 0 8px 8px;
             overflow: hidden;
         }
 
+        /* Canvas 内部逻辑像素依然是 900x450，但显示时会被缩放 */
         canvas { display: block; width: 100%; height: 100%; }
 
         /* === 菜单系统 === */
@@ -88,72 +93,38 @@
         }
         .hidden { display: none !important; }
 
-        .menu-container {
-            width: 100%; height: 100%;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            overflow-y: auto;
-            padding: 10px;
-        }
-
-        .menu-logo { font-size: 26px; color: #d4af37; margin-bottom: 15px; font-weight: 900; letter-spacing: 2px; }
+        .menu-container { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow-y: auto; padding: 10px; }
+        .menu-logo { font-size: 24px; color: #d4af37; margin-bottom: 15px; font-weight: 900; letter-spacing: 2px; }
         
-        .menu-btn {
-            background: linear-gradient(135deg, #d4af37, #aa8c2c);
-            color: #000; border: none; padding: 12px 0;
-            margin: 6px 0; font-size: 15px; font-weight: bold; cursor: pointer;
-            border-radius: 4px; width: 70%; max-width: 240px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        /* 按钮适配竖屏 */
+        .menu-btn { 
+            background: linear-gradient(135deg, #d4af37, #aa8c2c); color: #000; border: none; 
+            padding: 12px 0; margin: 6px 0; font-size: 14px; font-weight: bold; cursor: pointer; 
+            border-radius: 4px; width: 80%; /* 竖屏时宽一点 */
+            max-width: 240px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
         }
         .menu-btn:active { transform: scale(0.96); opacity: 0.9; }
         .btn-secondary { background: #444; color: #fff; margin-top: 15px; }
 
         .input-group { margin-bottom: 10px; width: 100%; text-align: center; }
         .input-label { color: #888; font-size: 11px; margin-bottom: 3px; }
-        .input-styled {
-            padding: 10px; border-radius: 4px; border: 1px solid #444;
-            background: #222; color: #fff; width: 70%; max-width: 240px;
-            text-align: center; font-size: 15px; outline: none;
+        .input-styled { 
+            padding: 10px; border-radius: 4px; border: 1px solid #444; background: #222; color: #fff; 
+            width: 80%; max-width: 240px; text-align: center; font-size: 14px; outline: none; 
         }
         .input-styled:focus { border-color: #d4af37; }
 
-        #host-id-display {
-            background: #1a1a1a; border: 1px dashed #555; padding: 10px;
-            border-radius: 4px; margin: 8px auto; width: 80%; max-width: 260px;
-            cursor: pointer; display: none;
-        }
-        #host-id-val {
-            font-size: 20px; font-weight: bold; color: #4CAF50; letter-spacing: 1px;
-            background: transparent; border: none; width: 100%; text-align: center;
-        }
-
+        #host-id-display { background: #1a1a1a; border: 1px dashed #555; padding: 10px; border-radius: 4px; margin: 8px auto; width: 85%; max-width: 260px; cursor: pointer; display: none; }
+        #host-id-val { font-size: 18px; font-weight: bold; color: #4CAF50; letter-spacing: 1px; background: transparent; border: none; width: 100%; text-align: center; }
         .status-msg { color: #aaa; font-size: 11px; margin-top: 5px; min-height: 16px; }
         .divider { width: 50%; height: 1px; background: #333; margin: 12px 0; }
 
-        #disconnect-modal {
-            display: none; position: absolute; top:0; left:0; width:100%; height:100%;
-            background: rgba(0,0,0,0.9); z-index: 200;
-            flex-direction: column; align-items: center; justify-content: center;
-        }
+        #disconnect-modal { display: none; position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.9); z-index: 200; flex-direction: column; align-items: center; justify-content: center; }
         .err-title { color: #ff4444; font-size: 20px; font-weight: bold; margin-bottom: 10px; }
-        
-        #portrait-warning {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; z-index: 9999;
-            flex-direction: column; align-items: center; justify-content: center;
-        }
-        #portrait-warning p { color: #d4af37; margin-top: 20px; }
-        @media screen and (orientation: portrait) { #portrait-warning { display: flex; } }
     </style>
 </head>
 <body>
 
-    <div id="portrait-warning">
-        <svg viewBox="0 0 24 24" style="width:64px;height:64px;fill:#fff"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/></svg>
-        <p>请旋转手机至横屏游戏</p>
-    </div>
-
-    <!-- 一体化主容器 -->
     <div id="main-wrapper">
         <div id="ui-header">
             <div class="player-box" id="panel-p1">
@@ -178,7 +149,6 @@
             <canvas id="gameCanvas"></canvas>
 
             <div id="menu-overlay">
-                <!-- 主菜单 -->
                 <div id="main-menu" class="menu-container">
                     <div class="menu-logo" id="menu-title">SNOOKER</div>
                     <div class="input-group">
@@ -189,10 +159,8 @@
                     <button class="menu-btn" id="btn-online" onclick="ui.showOnlineMenu()" style="background: #4CAF50; color:#fff">Online</button>
                 </div>
 
-                <!-- 联机面板 -->
                 <div id="online-panel" class="menu-container hidden">
                     <div class="menu-logo" id="online-title" style="font-size: 20px; margin-bottom: 10px;">Online</div>
-                    
                     <div class="input-group">
                         <button class="menu-btn" id="btn-host" onclick="network.createRoom()">Host (Create)</button>
                         <div id="host-id-display" onclick="network.copyId()">
@@ -201,16 +169,13 @@
                             <div class="status-msg" id="host-status">...</div>
                         </div>
                     </div>
-
                     <div class="divider"></div>
-
                     <div class="input-group">
                         <div class="input-label" id="lbl-join-id">Enter Friend's ID:</div>
                         <input type="text" id="join-id-input" class="input-styled" placeholder="ID" style="text-transform:uppercase;">
                         <button class="menu-btn" id="btn-join" onclick="network.joinRoom()" style="margin-top:5px">Join</button>
                         <div class="status-msg" id="join-status"></div>
                     </div>
-
                     <div class="input-label" style="margin-top: 5px; color: #666; font-size:9px">(建议使用 WIFI)</div>
                     <button class="menu-btn btn-secondary" id="btn-back" onclick="ui.backToMain()">Back</button>
                 </div>
@@ -244,17 +209,16 @@ class NetworkManager {
     constructor() { this.peer = null; this.conn = null; this.isHost = false; this.connected = false; this.opponentName = "Opponent"; }
     generateShortId() { const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let r=''; for(let i=0;i<6;i++)r+=c.charAt(Math.floor(Math.random()*c.length)); return r; }
     
-    // 增加国内 STUN 节点优化连接
     initPeer(customId=null) {
         if(this.peer)return; 
         this.peer = new Peer(customId, {
             debug: 1,
             config: {
                 iceServers: [
-                    { urls: 'stun:stun.miwifi.com:3478' }, // 小米
-                    { urls: 'stun:stun.qq.com:3478' }, // 腾讯
-                    { urls: 'stun:stun.chat.bilibili.com:3478' }, // B站
-                    { urls: 'stun:stun.l.google.com:19302' }, // Google
+                    { urls: 'stun:stun.miwifi.com:3478' },
+                    { urls: 'stun:stun.qq.com:3478' },
+                    { urls: 'stun:stun.chat.bilibili.com:3478' },
+                    { urls: 'stun:stun.l.google.com:19302' },
                     { urls: 'stun:global.stun.twilio.com:3478' }
                 ]
             }
@@ -407,12 +371,12 @@ class GameApp {
     }
     createBall(id, x, y, type, val, color) { return { id, x, y, type, val, color, vx: 0, vy: 0, active: true, spotX: type===2?x:null, spotY: type===2?y:null }; }
 
-    syncToClient(foulMsg) { if (this.state.mode !== 'ONLINE_HOST' || !network.connected) return; const payload = { balls: this.balls.map(b => ({ id:b.id, x:b.x, y:b.y, type:b.type, val:b.val, color:b.color, vx:b.vx, vy:b.vy, active:b.active })), scoreP1: this.state.scoreP1, scoreP2: this.state.scoreP2, turn: this.state.turn, phase: this.state.phase, target: this.state.target, whiteFoul: this.state.whiteFoul, redsLeft: this.state.redsLeft, tempMsg: foulMsg }; network.send({ type: 'SYNC_STATE', payload: payload }); }
+    syncToClient(foulMsg, type) { if (this.state.mode !== 'ONLINE_HOST' || !network.connected) return; const payload = { balls: this.balls.map(b => ({ id:b.id, x:b.x, y:b.y, type:b.type, val:b.val, color:b.color, vx:b.vx, vy:b.vy, active:b.active })), scoreP1: this.state.scoreP1, scoreP2: this.state.scoreP2, turn: this.state.turn, phase: this.state.phase, target: this.state.target, whiteFoul: this.state.whiteFoul, redsLeft: this.state.redsLeft, tempMsg: foulMsg, msgType: type }; network.send({ type: 'SYNC_STATE', payload: payload }); }
     applySyncState(data) {
         if (this.balls.length === 0 && data.balls.length > 0) this.balls = data.balls.map(b => ({ id:b.id, x:b.x, y:b.y, type:b.type, val:b.val, color:b.color, vx:b.vx, vy:b.vy, active:b.active, spotX: (b.type===2?b.x:null), spotY: (b.type===2?b.y:null) }));
         else data.balls.forEach(rb => { let lb = this.balls.find(b => b.id === rb.id); if (lb) { lb.x = rb.x; lb.y = rb.y; lb.vx = rb.vx; lb.vy = rb.vy; lb.active = rb.active; } });
         this.whiteBall = this.balls.find(b => b.type === 0); this.state.scoreP1 = data.scoreP1; this.state.scoreP2 = data.scoreP2; this.state.turn = data.turn; this.state.phase = data.phase; this.state.target = data.target; this.state.redsLeft = data.redsLeft;
-        if (data.tempMsg) this.showTempMsg(data.tempMsg); this.updateUI();
+        if (data.tempMsg) this.showTempMsg(data.tempMsg, data.msgType); this.updateUI();
     }
 
     isMyTurn() { if (this.state.mode === 'PvCPU') return this.state.turn === 'P1'; if (this.state.mode === 'ONLINE_HOST') return this.state.turn === 'P1'; if (this.state.mode === 'ONLINE_CLIENT') return this.state.turn === 'P2'; return false; }
@@ -444,12 +408,11 @@ class GameApp {
         if (this.state.phase !== 'MOVING') return;
         
         let moving = false;
-        // 增加迭代次数以提高精度，防止穿墙
-        for (let s=0; s<10; s++) {
+        for (let s=0; s<8; s++) {
             this.balls.forEach(b => { 
                 if (!b.active) return; 
                 b.x += b.vx; b.y += b.vy; 
-                b.vx *= 0.985; b.vy *= 0.985; // 稍微增加阻力
+                b.vx *= 0.985; b.vy *= 0.985; 
                 if(Math.abs(b.vx) < 0.01) b.vx = 0;
                 if(Math.abs(b.vy) < 0.01) b.vy = 0;
             });
@@ -468,7 +431,6 @@ class GameApp {
             this.balls.forEach(b => { if(!b.active)return; for(let p of this.pockets) if(Math.hypot(b.x-p.x, b.y-p.y)<16) { b.active=false; b.vx=0; b.vy=0; if(b===this.whiteBall)this.state.whiteFoul=true; else this.state.potted.push(b); audio.playPot(); break; } });
         }
 
-        // 外层检测：只要有一个球有速度，就认为在运动
         let isAnyBallMoving = false;
         this.balls.forEach(b => {
             if(b.active && Math.hypot(b.vx, b.vy) > 0.02) isAnyBallMoving = true;
@@ -518,19 +480,27 @@ class GameApp {
         
         let opp = this.state.turn === 'P1' ? 'scoreP2' : 'scoreP1';
         if (foul) {
-            this.state[opp] += penalty; foulMsg = `${this.text.foul} ${this.text.score_plus}${penalty}`; this.showTempMsg(foulMsg);
+            this.state[opp] += penalty; 
+            foulMsg = `${this.text.foul} ${this.text.score_plus}${penalty}`;
+            this.showTempMsg(foulMsg, 'red'); // 红色提示
             const winScoreEl = document.getElementById(this.state.turn === 'P1' ? 'score-p2' : 'score-p1');
             winScoreEl.classList.add('flash-red'); setTimeout(() => winScoreEl.classList.remove('flash-red'), 500);
-            this.changeTurn(this.state.whiteFoul, foulMsg);
+            this.changeTurn(this.state.whiteFoul, foulMsg, 'red');
         } else if (validPot) {
-            let my = this.state.turn === 'P1' ? 'scoreP1' : 'scoreP2'; this.state[my] += turnScore;
+            let my = this.state.turn === 'P1' ? 'scoreP1' : 'scoreP2'; 
+            this.state[my] += turnScore;
+            let scoreMsg = `${this.text.score_plus}${turnScore}`;
+            this.showTempMsg(scoreMsg, 'green'); // 绿色提示
+            
             if (isRed) this.state.target = 'COLOR';
             else if (this.state.target === 'COLOR') { if (reds > 0) this.state.target = 'RED'; else this.state.target = 2; }
             else { this.state.target++; if (this.state.target > 7) { this.handleGameOver(); return; } }
             this.updateUI();
             if (this.state.mode === 'PvCPU' && this.state.turn === 'P2') setTimeout(() => this.startAiLogic(), 1000);
-            if (this.state.mode === 'ONLINE_HOST') this.syncToClient();
-        } else { this.changeTurn(false); }
+            if (this.state.mode === 'ONLINE_HOST') this.syncToClient(scoreMsg, 'green');
+        } else {
+            this.changeTurn(false);
+        }
     }
 
     handleGameOver() {
@@ -539,15 +509,27 @@ class GameApp {
         alert("GAME OVER! " + winner + " Wins!"); location.reload();
     }
 
-    showTempMsg(msg) { this.state.tempMsg = msg; this.updateUI(); if (this.state.tempMsgTimer) clearTimeout(this.state.tempMsgTimer); this.state.tempMsgTimer = setTimeout(() => { this.state.tempMsg = ""; this.updateUI(); }, 3000); }
+    showTempMsg(msg, type) {
+        this.state.tempMsg = msg; 
+        const el = document.getElementById('txt-sub');
+        el.className = ''; // 清除旧样式
+        if(type === 'red') el.classList.add('text-red');
+        if(type === 'green') el.classList.add('text-green');
+        this.updateUI(); 
+        if (this.state.tempMsgTimer) clearTimeout(this.state.tempMsgTimer); 
+        this.state.tempMsgTimer = setTimeout(() => { 
+            this.state.tempMsg = ""; 
+            this.updateUI(); 
+        }, 3000); 
+    }
 
-    changeTurn(ballInHand, foulMsg = null) {
+    changeTurn(ballInHand, foulMsg = null, msgType = null) {
         this.state.turn = (this.state.turn === 'P1') ? 'P2' : 'P1';
         if (this.state.redsLeft > 0) this.state.target = 'RED';
         if (ballInHand) { if (this.state.mode === 'PvCPU' && this.state.turn === 'P2') { this.cpuPlaceBall(); this.state.phase = 'IDLE'; } else { this.state.phase = 'PLACING'; } } else { this.state.phase = 'IDLE'; }
         this.updateUI();
         if (this.state.mode === 'PvCPU' && this.state.turn === 'P2' && this.state.phase === 'IDLE') setTimeout(() => this.startAiLogic(), 1500);
-        if (this.state.mode === 'ONLINE_HOST') this.syncToClient(foulMsg);
+        if (this.state.mode === 'ONLINE_HOST') this.syncToClient(foulMsg, msgType);
     }
 
     cpuPlaceBall() {
@@ -609,8 +591,15 @@ class GameApp {
         else if (this.state.target === 'COLOR') txt = this.text.target_any;
         else txt = this.text.target_ball + this.text.balls[this.state.target];
         setText('txt-main', txt);
-        if (this.state.tempMsg) { setText('txt-sub', this.state.tempMsg); document.getElementById('txt-sub').classList.add('warn-text'); } 
-        else { setText('txt-sub', this.state.phase === 'IDLE' ? (this.isMyTurn() ? this.text.drag : "") : this.text.wait); document.getElementById('txt-sub').classList.remove('warn-text'); }
+        
+        const el = document.getElementById('txt-sub');
+        if (this.state.tempMsg) { 
+            setText('txt-sub', this.state.tempMsg); 
+            // 样式由 showTempMsg 控制
+        } else { 
+            setText('txt-sub', this.state.phase === 'IDLE' ? (this.isMyTurn() ? this.text.drag : "") : this.text.wait); 
+            el.className = ''; // 重置样式
+        }
     }
 
     drawCue(ctx, sx, sy, nx, ny, pwr) {
