@@ -2,191 +2,248 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <!-- 核心：适配刘海屏和动态视口 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Snooker V45 Portrait</title>
-    <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+    <title>Snooker V48 Fullscreen</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
         body {
-            background-color: #080808;
-            height: 100vh;
+            /* 修改背景为深色台呢绿，消除黑边带来的割裂感 */
+            background: radial-gradient(circle at center, #1b4d24 0%, #0d2b12 100%);
+            height: 100dvh; /* 动态高度，适应手机地址栏 */
             width: 100vw;
             margin: 0;
             padding: 0;
+            /* 安全区域适配 */
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
+            
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center; /* 居中显示 */
+            /* 让内容分散对齐，占满高度 */
+            justify-content: space-between; 
             font-family: 'Segoe UI', Roboto, sans-serif;
             overflow: hidden;
             color: #eee;
         }
 
-        /* === 主容器 === */
-        #main-wrapper {
-            /* 关键修改：允许宽度占满屏幕，不再强制固定宽度 */
-            width: 98vw; 
-            max-width: 850px; 
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.8);
-        }
-
-        /* 1. 顶部计分板 (适配窄屏) */
+        /* 1. 顶部计分板 - 固定在顶部 */
         #ui-header {
             width: 100%;
-            height: 50px;
-            background: #1a1a1a;
-            border-bottom: 2px solid #d4af37;
+            max-width: 900px;
+            height: 60px;
+            background: rgba(20, 20, 20, 0.8); /* 半透明背景 */
+            backdrop-filter: blur(10px); /* 毛玻璃效果 */
+            border-bottom: 1px solid rgba(212, 175, 55, 0.3);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0 8px; /* 减小内边距 */
-            border-radius: 8px 8px 0 0;
-            position: relative;
+            padding: 0 15px;
             z-index: 20;
+            flex-shrink: 0;
         }
 
-        .player-box { display: flex; flex-direction: column; align-items: center; min-width: 45px; opacity: 0.5; transition: 0.3s; }
+        .player-box { display: flex; flex-direction: column; align-items: center; min-width: 60px; opacity: 0.6; transition: 0.3s; }
         .player-box.active { opacity: 1; transform: scale(1.1); }
-        
-        /* 字体在手机上调小 */
-        .score-text { font-size: 20px; font-weight: 800; line-height: 1; color: #fff; }
-        .name-text { font-size: 10px; font-weight: bold; color: #aaa; margin-top: 2px; max-width: 60px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-        
-        .active .score-text { color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+        .score-text { font-size: 24px; font-weight: 800; line-height: 1; color: #fff; }
+        .name-text { font-size: 11px; font-weight: bold; color: #aaa; margin-top: 3px; }
+        .active .score-text { color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.6); }
         .active .name-text { color: #d4af37; }
 
         #msg-area { flex: 1; text-align: center; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
-        #txt-main { font-size: 12px; font-weight: bold; color: #fff; white-space: nowrap; }
-        #txt-sub { font-size: 10px; color: #888; height: 12px; white-space: nowrap; }
-        
-        /* 状态颜色动画 */
-        .text-red { color: #ff4444 !important; font-weight: bold; animation: pop 0.3s; }
-        .text-green { color: #00e676 !important; font-weight: bold; animation: pop 0.3s; }
+        #txt-main { font-size: 14px; font-weight: bold; color: #fff; text-shadow: 0 1px 2px #000; }
+        #txt-sub { font-size: 11px; color: #bbb; height: 14px; }
+        .warn-text { color: #ff5555 !important; animation: pop 0.3s; }
+        .text-green { color: #00e676 !important; animation: pop 0.3s; }
         @keyframes pop { 50% { transform: scale(1.2); } }
 
-        #btn-sound { width: 28px; height: 28px; background: rgba(255,255,255,0.1); border-radius: 50%; border: 1px solid #444; display: flex; align-items: center; justify-content: center; }
-        #btn-sound svg { fill: #ddd; width: 14px; height: 14px; }
+        #btn-sound { width: 32px; height: 32px; background: rgba(255,255,255,0.1); border-radius: 50%; border: 1px solid #555; display: flex; align-items: center; justify-content: center; }
+        #btn-sound svg { fill: #ddd; width: 16px; height: 16px; }
 
-        /* 2. 画布容器 (核心自适应) */
+        /* 2. 游戏容器 - 垂直居中，自适应大小 */
+        #game-container {
+            flex: 1; /* 占满中间所有空间 */
+            width: 100%;
+            display: flex;
+            align-items: center; 
+            justify-content: center;
+            padding: 10px; /* 边缘留白 */
+        }
+
         #canvas-box {
             position: relative;
             background: #000;
-            width: 100%; /* 跟随父容器宽度，父容器是 98vw */
-            aspect-ratio: 2/1; /* 锁定宽高比，高度会自动根据宽度计算 */
-            border-radius: 0 0 8px 8px;
-            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6); 
+            border: 4px solid #3e2723; /* 增加木纹边框感 */
+            border-radius: 8px;
+            
+            /* 核心适配：宽度占满，但受限于比例，高度自动计算 */
+            width: 100%;
+            max-width: 850px; 
+            aspect-ratio: 2/1; 
         }
 
-        /* Canvas 内部逻辑像素依然是 900x450，但显示时会被缩放 */
         canvas { display: block; width: 100%; height: 100%; }
 
-        /* === 菜单系统 === */
+        /* 3. 底部占位 - 视觉平衡 (可选) */
+        #footer-spacer {
+            height: 20px;
+            width: 100%;
+            flex-shrink: 0;
+        }
+
+        /* === 菜单系统：全屏遮罩 === */
         #menu-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(13, 13, 13, 0.96);
+            position: fixed; /* 全屏固定 */
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(8, 8, 8, 0.95); /* 深色背景遮挡一切 */
+            backdrop-filter: blur(5px);
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
-            z-index: 50;
+            z-index: 999; /* 最高层级 */
+            transition: opacity 0.3s;
         }
+        
         .hidden { display: none !important; }
 
-        .menu-container { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow-y: auto; padding: 10px; }
-        .menu-logo { font-size: 24px; color: #d4af37; margin-bottom: 15px; font-weight: 900; letter-spacing: 2px; }
+        .menu-container {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            display: flex; flex-direction: column;
+            align-items: center;
+            /* 允许内容过多时滚动 */
+            max-height: 90vh; overflow-y: auto;
+        }
+
+        .menu-logo { font-size: 36px; color: #d4af37; margin-bottom: 30px; font-weight: 900; letter-spacing: 3px; text-shadow: 0 4px 10px rgba(0,0,0,0.5); }
         
-        /* 按钮适配竖屏 */
-        .menu-btn { 
-            background: linear-gradient(135deg, #d4af37, #aa8c2c); color: #000; border: none; 
-            padding: 12px 0; margin: 6px 0; font-size: 14px; font-weight: bold; cursor: pointer; 
-            border-radius: 4px; width: 80%; /* 竖屏时宽一点 */
-            max-width: 240px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
+        .menu-btn {
+            background: linear-gradient(135deg, #d4af37, #aa8c2c);
+            color: #000; border: none; padding: 14px 0;
+            margin: 8px 0; font-size: 16px; font-weight: bold; cursor: pointer;
+            border-radius: 8px; width: 100%;
+            box-shadow: 0 4px 10px rgba(212, 175, 55, 0.2);
+            transition: transform 0.1s;
         }
         .menu-btn:active { transform: scale(0.96); opacity: 0.9; }
-        .btn-secondary { background: #444; color: #fff; margin-top: 15px; }
+        .btn-secondary { background: #333; color: #aaa; border: 1px solid #444; box-shadow: none; margin-top: 20px; }
 
-        .input-group { margin-bottom: 10px; width: 100%; text-align: center; }
-        .input-label { color: #888; font-size: 11px; margin-bottom: 3px; }
-        .input-styled { 
-            padding: 10px; border-radius: 4px; border: 1px solid #444; background: #222; color: #fff; 
-            width: 80%; max-width: 240px; text-align: center; font-size: 14px; outline: none; 
+        .input-group { margin-bottom: 15px; width: 100%; text-align: center; }
+        .input-label { color: #888; font-size: 12px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+        .input-styled {
+            padding: 12px; border-radius: 8px; border: 2px solid #333;
+            background: #1a1a1a; color: #fff; width: 100%;
+            text-align: center; font-size: 16px; outline: none;
+            transition: border-color 0.3s;
         }
         .input-styled:focus { border-color: #d4af37; }
 
-        #host-id-display { background: #1a1a1a; border: 1px dashed #555; padding: 10px; border-radius: 4px; margin: 8px auto; width: 85%; max-width: 260px; cursor: pointer; display: none; }
-        #host-id-val { font-size: 18px; font-weight: bold; color: #4CAF50; letter-spacing: 1px; background: transparent; border: none; width: 100%; text-align: center; }
-        .status-msg { color: #aaa; font-size: 11px; margin-top: 5px; min-height: 16px; }
-        .divider { width: 50%; height: 1px; background: #333; margin: 12px 0; }
+        /* ID 显示框 */
+        #host-id-display {
+            background: #151515; border: 2px dashed #444; padding: 15px;
+            border-radius: 8px; margin: 10px 0; width: 100%; text-align: center;
+            cursor: pointer; display: none;
+        }
+        #host-id-val {
+            font-size: 24px; font-weight: bold; color: #4CAF50; letter-spacing: 2px;
+            background: transparent; border: none; width: 100%; text-align: center; pointer-events: none;
+        }
 
-        #disconnect-modal { display: none; position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.9); z-index: 200; flex-direction: column; align-items: center; justify-content: center; }
-        .err-title { color: #ff4444; font-size: 20px; font-weight: bold; margin-bottom: 10px; }
+        .status-msg { color: #aaa; font-size: 13px; margin-top: 5px; min-height: 20px; }
+        .divider { width: 100%; height: 1px; background: #333; margin: 20px 0; }
+
+        #disconnect-modal {
+            display: none; position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.92); z-index: 1000;
+            flex-direction: column; align-items: center; justify-content: center;
+        }
+        .err-title { color: #ff5555; font-size: 22px; font-weight: bold; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
-    <div id="main-wrapper">
-        <div id="ui-header">
-            <div class="player-box" id="panel-p1">
-                <span class="score-text" id="score-p1">0</span>
-                <span class="name-text" id="name-p1">P1</span>
-            </div>
-            <div id="msg-area">
-                <div id="txt-main"></div>
-                <div id="txt-sub"></div>
-            </div>
-            <div class="player-box" id="panel-p2">
-                <span class="score-text" id="score-p2">0</span>
-                <span class="name-text" id="name-p2">P2</span>
-            </div>
-            <div id="btn-sound">
-                <svg id="icon-on" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
-                <svg id="icon-off" viewBox="0 0 24 24" style="display:none"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73 4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
-            </div>
+    <!-- 顶部 UI -->
+    <div id="ui-header">
+        <div class="player-box" id="panel-p1">
+            <span class="score-text" id="score-p1">0</span>
+            <span class="name-text" id="name-p1">P1</span>
         </div>
+        <div id="msg-area">
+            <div id="txt-main"></div>
+            <div id="txt-sub"></div>
+        </div>
+        <div class="player-box" id="panel-p2">
+            <span class="score-text" id="score-p2">0</span>
+            <span class="name-text" id="name-p2">P2</span>
+        </div>
+        <div id="btn-sound">
+            <svg id="icon-on" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+            <svg id="icon-off" viewBox="0 0 24 24" style="display:none"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73 4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+        </div>
+    </div>
 
+    <!-- 游戏区域 (自适应居中) -->
+    <div id="game-container">
         <div id="canvas-box">
             <canvas id="gameCanvas"></canvas>
-
-            <div id="menu-overlay">
-                <div id="main-menu" class="menu-container">
-                    <div class="menu-logo" id="menu-title">SNOOKER</div>
-                    <div class="input-group">
-                        <div class="input-label" id="lbl-your-name">Your Name</div>
-                        <input type="text" id="my-name-input" class="input-styled" maxlength="8" placeholder="Name">
-                    </div>
-                    <button class="menu-btn" id="btn-pvc" onclick="game.startGame('PvCPU')">Vs CPU</button>
-                    <button class="menu-btn" id="btn-online" onclick="ui.showOnlineMenu()" style="background: #4CAF50; color:#fff">Online</button>
-                </div>
-
-                <div id="online-panel" class="menu-container hidden">
-                    <div class="menu-logo" id="online-title" style="font-size: 20px; margin-bottom: 10px;">Online</div>
-                    <div class="input-group">
-                        <button class="menu-btn" id="btn-host" onclick="network.createRoom()">Host (Create)</button>
-                        <div id="host-id-display" onclick="network.copyId()">
-                            <div class="input-label" id="lbl-host-id">Click to Copy ID:</div>
-                            <input type="text" id="host-id-val" readonly value="">
-                            <div class="status-msg" id="host-status">...</div>
-                        </div>
-                    </div>
-                    <div class="divider"></div>
-                    <div class="input-group">
-                        <div class="input-label" id="lbl-join-id">Enter Friend's ID:</div>
-                        <input type="text" id="join-id-input" class="input-styled" placeholder="ID" style="text-transform:uppercase;">
-                        <button class="menu-btn" id="btn-join" onclick="network.joinRoom()" style="margin-top:5px">Join</button>
-                        <div class="status-msg" id="join-status"></div>
-                    </div>
-                    <div class="input-label" style="margin-top: 5px; color: #666; font-size:9px">(建议使用 WIFI)</div>
-                    <button class="menu-btn btn-secondary" id="btn-back" onclick="ui.backToMain()">Back</button>
-                </div>
-            </div>
-
-            <div id="disconnect-modal">
-                <div class="err-title" id="err-title">Disconnected</div>
-                <div style="color:#aaa; margin-bottom: 20px; font-size:12px;" id="err-desc">Connection lost</div>
-                <button class="menu-btn" id="btn-reload" onclick="location.reload()">Reload</button>
-            </div>
         </div>
+    </div>
+
+    <!-- 底部垫片 (可选，用于视觉平衡) -->
+    <div id="footer-spacer"></div>
+
+    <!-- 全屏菜单系统 -->
+    <div id="menu-overlay">
+        <!-- 主菜单 -->
+        <div id="main-menu" class="menu-container">
+            <div class="menu-logo" id="menu-title">SNOOKER</div>
+            
+            <div class="input-group">
+                <div class="input-label" id="lbl-your-name">Your Name</div>
+                <input type="text" id="my-name-input" class="input-styled" maxlength="8" placeholder="Name">
+            </div>
+
+            <button class="menu-btn" id="btn-pvc" onclick="game.startGame('PvCPU')">Vs CPU</button>
+            <button class="menu-btn" id="btn-online" onclick="ui.showOnlineMenu()" style="background: #4CAF50; color:#fff">Online</button>
+        </div>
+
+        <!-- 联机面板 -->
+        <div id="online-panel" class="menu-container hidden">
+            <div class="menu-logo" id="online-title" style="font-size: 24px;">Online</div>
+            
+            <div class="input-group">
+                <button class="menu-btn" id="btn-host" onclick="network.createRoom()">Host (Create)</button>
+                <div id="host-id-display" onclick="network.copyId()">
+                    <div class="input-label" id="lbl-host-id">Click to Copy ID:</div>
+                    <input type="text" id="host-id-val" readonly value="">
+                    <div class="status-msg" id="host-status">...</div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="input-group">
+                <div class="input-label" id="lbl-join-id">Enter Friend's ID:</div>
+                <input type="text" id="join-id-input" class="input-styled" placeholder="ID" style="text-transform:uppercase;">
+                <button class="menu-btn" id="btn-join" onclick="network.joinRoom()" style="margin-top:10px">Join</button>
+                <div class="status-msg" id="join-status"></div>
+            </div>
+
+            <button class="menu-btn btn-secondary" id="btn-back" onclick="ui.backToMain()">Back</button>
+        </div>
+    </div>
+
+    <!-- 断线弹窗 -->
+    <div id="disconnect-modal">
+        <div class="err-title" id="err-title">Disconnected</div>
+        <div style="color:#aaa; margin-bottom: 25px; font-size:14px;" id="err-desc">Connection lost</div>
+        <button class="menu-btn" id="btn-reload" onclick="location.reload()">Reload</button>
     </div>
 
 <script>
