@@ -2,140 +2,184 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Snooker V40 Stable</title>
+    <!-- 视口设置：禁止缩放，适配刘海屏 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Snooker V41 Mobile</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        * { box-sizing: border-box; touch-action: none; user-select: none; -webkit-user-select: none; }
+        /* 全局重置 */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
         body {
             background-color: #121212;
             height: 100vh;
+            width: 100vw;
             margin: 0;
+            padding: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            overflow: hidden;
+            overflow: hidden; /* 禁止页面滚动 */
             color: #eee;
         }
 
+        /* 顶部计分板 */
         #ui-header {
             width: 100%;
             max-width: 850px;
-            height: 60px;
+            height: 50px; /* 稍微调小以适应手机 */
             background: #1e1e1e;
             border-bottom: 3px solid #d4af37;
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 0 15px;
-            border-radius: 8px 8px 0 0;
+            border-radius: 0 0 8px 8px;
             position: relative;
             z-index: 10;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            flex-shrink: 0; /* 防止被挤压 */
         }
 
-        .player-box {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-width: 80px;
-            opacity: 0.4;
-            transition: all 0.3s;
-        }
+        .player-box { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 60px; opacity: 0.4; transition: all 0.3s; }
         .player-box.active { opacity: 1; transform: scale(1.1); }
-
-        .score-text { font-size: 28px; font-weight: 800; font-family: monospace; line-height: 1; color: #fff; }
-        .name-text { font-size: 12px; font-weight: bold; color: #aaa; margin-top: 5px; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .active .score-text { color: #ffd700; text-shadow: 0 0 15px rgba(255, 215, 0, 0.6); }
+        .score-text { font-size: 24px; font-weight: 800; font-family: monospace; line-height: 1; color: #fff; }
+        .name-text { font-size: 10px; font-weight: bold; color: #aaa; margin-top: 2px; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .active .score-text { color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.6); }
         .active .name-text { color: #d4af37; }
 
         #msg-area { flex: 1; text-align: center; margin: 0 5px; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
-        #txt-main { font-size: 15px; font-weight: bold; color: #fff; white-space: nowrap; letter-spacing: 1px; margin-bottom: 2px; }
-        #txt-sub { font-size: 12px; color: #888; min-height: 14px; white-space: nowrap; }
+        #txt-main { font-size: 14px; font-weight: bold; color: #fff; white-space: nowrap; letter-spacing: 1px; }
+        #txt-sub { font-size: 10px; color: #888; min-height: 14px; white-space: nowrap; }
         .warn-text { color: #ff4444 !important; font-weight: bold; animation: flash 0.5s; }
         @keyframes flash { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 
         #btn-sound {
-            width: 36px; height: 36px; cursor: pointer;
+            width: 32px; height: 32px; cursor: pointer;
             background: rgba(255,255,255,0.1); border-radius: 50%; border: 1px solid #444;
             display: flex; align-items: center; justify-content: center;
-            transition: background 0.2s;
         }
-        #btn-sound:hover { background: rgba(255,255,255,0.2); }
-        #btn-sound svg { fill: #ddd; width: 20px; height: 20px; }
+        #btn-sound svg { fill: #ddd; width: 18px; height: 18px; }
 
-        #canvas-box {
-            position: relative; width: 100%; max-width: 850px; aspect-ratio: 2/1; 
-            background: #000; box-shadow: 0 20px 50px rgba(0,0,0,0.8); border-radius: 0 0 8px 8px;
+        /* 游戏区域容器 */
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 850px;
+            /* 保持宽高比，或者在手机上自适应高度 */
+            flex: 1; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
             overflow: hidden;
         }
-        canvas { display: block; width: 100%; height: 100%; border-radius: 0 0 8px 8px; }
+
+        #canvas-box {
+            position: relative; 
+            width: 100%; 
+            aspect-ratio: 2/1; /* 强制比例 */
+            background: #000; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8); 
+            border-radius: 8px;
+        }
         
+        /* 关键：Canvas 必须设置 touch-action: none 防止浏览器默认滚动 */
+        canvas { 
+            display: block; 
+            width: 100%; 
+            height: 100%; 
+            border-radius: 8px; 
+            touch-action: none; 
+        }
+        
+        /* === 菜单系统 === */
         #menu-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(18, 18, 18, 0.98); 
             display: flex; flex-direction: column;
             align-items: center; justify-content: center; 
             z-index: 100;
-            transition: opacity 0.3s;
-            padding: 10px;
+            border-radius: 8px;
+            padding: 20px;
         }
+
         .hidden { display: none !important; }
+
         .menu-container {
             display: flex; flex-direction: column; align-items: center; width: 100%;
-            max-height: 100%; overflow-y: auto; justify-content: center;
+            overflow-y: auto; -webkit-overflow-scrolling: touch;
         }
-        .menu-logo { font-size: 28px; color: #d4af37; margin-bottom: 15px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; text-shadow: 0 2px 10px rgba(212, 175, 55, 0.3); }
+
+        .menu-logo { font-size: 28px; color: #d4af37; margin-bottom: 20px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; }
+        
         .menu-btn {
             background: linear-gradient(135deg, #d4af37, #aa8c2c); 
-            color: #000; border: none; padding: 10px 0;
-            margin: 5px 0; font-size: 15px; font-weight: bold; cursor: pointer;
-            border-radius: 6px; width: 200px;
+            color: #000; border: none; padding: 12px 0;
+            margin: 6px 0; font-size: 16px; font-weight: bold; cursor: pointer;
+            border-radius: 6px; width: 220px;
             box-shadow: 0 3px 5px rgba(0,0,0,0.3);
-            transition: transform 0.1s, filter 0.2s;
+            /* 关键：允许按钮的触摸操作 */
+            touch-action: manipulation; 
         }
-        .menu-btn:active { transform: scale(0.96); }
-        .menu-btn:hover { filter: brightness(1.1); }
+        .menu-btn:active { transform: scale(0.96); opacity: 0.8; }
         .btn-secondary { background: #444; color: #fff; margin-top: 10px; }
         
         .input-group { margin-bottom: 10px; text-align: center; width: 100%; display: flex; flex-direction: column; align-items: center; }
-        .input-label { color: #888; font-size: 11px; margin-bottom: 3px; }
+        .input-label { color: #888; font-size: 12px; margin-bottom: 4px; }
         .input-styled {
-            padding: 8px; border-radius: 6px; border: 2px solid #333; 
-            background: #222; color: #fff; width: 200px; 
-            text-align: center; font-size: 14px; outline: none; 
-            transition: border-color 0.3s;
+            padding: 10px; border-radius: 6px; border: 2px solid #333; 
+            background: #222; color: #fff; width: 220px; 
+            text-align: center; font-size: 16px; outline: none; 
+            touch-action: manipulation;
         }
         .input-styled:focus { border-color: #d4af37; }
-        .input-styled::placeholder { color: #555; }
 
         #host-id-display {
             display: none; background: #1a1a1a; border: 1px dashed #555; 
-            padding: 8px; border-radius: 8px; margin: 5px 0; width: 220px; text-align: center;
-            cursor: pointer; transition: background 0.2s;
+            padding: 10px; border-radius: 8px; margin: 5px 0; width: 220px; text-align: center;
+            cursor: pointer;
         }
-        #host-id-display:hover { background: #252525; }
         #host-id-val {
             font-size: 20px; font-weight: bold; color: #4CAF50; letter-spacing: 2px;
             background: transparent; border: none; width: 100%; text-align: center; 
             pointer-events: none; margin-top: 2px;
         }
         
-        .divider { width: 50%; height: 1px; background: #333; margin: 8px 0; }
-        .status-msg { color: #aaa; font-size: 11px; margin-top: 2px; min-height: 16px; }
+        .status-msg { color: #aaa; font-size: 12px; margin-top: 5px; min-height: 18px; }
 
+        /* 断线提示层 */
         #disconnect-modal {
             display: none; position: absolute; top:0; left:0; width:100%; height:100%;
             background: rgba(0,0,0,0.95); z-index: 200;
             flex-direction: column; align-items: center; justify-content: center;
         }
         .err-title { color: #ff4444; font-size: 20px; font-weight: bold; margin-bottom: 10px; }
+
+        /* === 竖屏提示层 === */
+        #portrait-warning {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 9999;
+            flex-direction: column; align-items: center; justify-content: center; text-align: center;
+            padding: 20px;
+        }
+        #portrait-warning svg { width: 64px; height: 64px; fill: #d4af37; margin-bottom: 20px; animation: rotatePhone 2s infinite; }
+        #portrait-warning p { color: #fff; font-size: 18px; font-weight: bold; }
+        
+        /* 仅在竖屏时显示提示 */
+        @media screen and (orientation: portrait) {
+            #portrait-warning { display: flex; }
+        }
+        @keyframes rotatePhone { 0% { transform: rotate(0deg); } 25% { transform: rotate(-90deg); } 50% { transform: rotate(-90deg); } 75% { transform: rotate(0deg); } 100% { transform: rotate(0deg); } }
     </style>
 </head>
 <body>
+
+    <!-- 竖屏强制横屏提示 -->
+    <div id="portrait-warning">
+        <svg viewBox="0 0 24 24"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/></svg>
+        <p>请旋转手机至横屏<br>Please Rotate Device</p>
+    </div>
 
     <div id="ui-header">
         <div class="player-box" id="panel-p1">
@@ -159,49 +203,54 @@
         </div>
     </div>
 
-    <div id="canvas-box">
-        <canvas id="gameCanvas"></canvas>
-        
-        <div id="menu-overlay">
-            <div id="main-menu" class="menu-container">
-                <div class="menu-logo" id="menu-title">SNOOKER</div>
-                <div class="input-group">
-                    <div class="input-label" id="lbl-your-name">Your Name</div>
-                    <input type="text" id="my-name-input" class="input-styled" maxlength="8" placeholder="Name">
-                </div>
-                <button class="menu-btn" id="btn-pvc" onclick="game.startGame('PvCPU')">Vs CPU</button>
-                <button class="menu-btn" id="btn-online" onclick="ui.showOnlineMenu()" style="background: #4CAF50; color:#fff">Online</button>
-            </div>
-
-            <div id="online-panel" class="menu-container hidden">
-                <div class="menu-logo" id="online-title" style="font-size: 20px; margin-bottom: 10px;">Online</div>
-                <div class="input-group">
-                    <button class="menu-btn" id="btn-host" onclick="network.createRoom()">Host (Create)</button>
-                    <div id="host-id-display" onclick="network.copyId()">
-                        <div class="input-label" id="lbl-host-id">Click to Copy ID:</div>
-                        <input type="text" id="host-id-val" readonly value="">
-                        <div class="status-msg" id="host-status">...</div>
+    <div id="game-container">
+        <div id="canvas-box">
+            <canvas id="gameCanvas"></canvas>
+            
+            <div id="menu-overlay">
+                <!-- 主菜单 -->
+                <div id="main-menu" class="menu-container">
+                    <div class="menu-logo" id="menu-title">SNOOKER</div>
+                    <div class="input-group">
+                        <div class="input-label" id="lbl-your-name">Your Name</div>
+                        <input type="text" id="my-name-input" class="input-styled" maxlength="8" placeholder="Name">
                     </div>
+                    <button class="menu-btn" id="btn-pvc" onclick="game.startGame('PvCPU')">Vs CPU</button>
+                    <button class="menu-btn" id="btn-online" onclick="ui.showOnlineMenu()" style="background: #4CAF50; color:#fff">Online</button>
                 </div>
-                <div class="divider"></div>
-                <div class="input-group">
-                    <div class="input-label" id="lbl-join-id">Enter Friend's ID:</div>
-                    <input type="text" id="join-id-input" class="input-styled" placeholder="ID" style="text-transform:uppercase;">
-                    <button class="menu-btn" id="btn-join" onclick="network.joinRoom()" style="margin-top:8px">Join</button>
-                    <div class="status-msg" id="join-status"></div>
-                </div>
-                <button class="menu-btn btn-secondary" id="btn-back" onclick="ui.backToMain()">Back</button>
-            </div>
-        </div>
 
-        <div id="disconnect-modal">
-            <div class="err-title" id="err-title">Disconnected</div>
-            <div style="color:#aaa; margin-bottom: 20px; font-size:13px;" id="err-desc">Connection lost</div>
-            <button class="menu-btn" id="btn-reload" onclick="location.reload()">Reload</button>
+                <!-- 联机面板 -->
+                <div id="online-panel" class="menu-container hidden">
+                    <div class="menu-logo" id="online-title" style="font-size: 20px; margin-bottom: 10px;">Online</div>
+                    <div class="input-group">
+                        <button class="menu-btn" id="btn-host" onclick="network.createRoom()">Host (Create)</button>
+                        <div id="host-id-display" onclick="network.copyId()">
+                            <div class="input-label" id="lbl-host-id">Click to Copy ID:</div>
+                            <input type="text" id="host-id-val" readonly value="">
+                            <div class="status-msg" id="host-status">...</div>
+                        </div>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="input-group">
+                        <div class="input-label" id="lbl-join-id">Enter Friend's ID:</div>
+                        <input type="text" id="join-id-input" class="input-styled" placeholder="ID" style="text-transform:uppercase;">
+                        <button class="menu-btn" id="btn-join" onclick="network.joinRoom()" style="margin-top:8px">Join</button>
+                        <div class="status-msg" id="join-status"></div>
+                    </div>
+                    <button class="menu-btn btn-secondary" id="btn-back" onclick="ui.backToMain()">Back</button>
+                </div>
+            </div>
+
+            <div id="disconnect-modal">
+                <div class="err-title" id="err-title">Disconnected</div>
+                <div style="color:#aaa; margin-bottom: 20px; font-size:13px;" id="err-desc">Connection lost</div>
+                <button class="menu-btn" id="btn-reload" onclick="location.reload()">Reload</button>
+            </div>
         </div>
     </div>
 
 <script>
+// UI 控制
 const ui = {
     showOnlineMenu: () => { document.getElementById('main-menu').classList.add('hidden'); document.getElementById('online-panel').classList.remove('hidden'); },
     backToMain: () => {
@@ -217,6 +266,7 @@ const ui = {
     showDisconnect: () => { document.getElementById('disconnect-modal').style.display = 'flex'; }
 };
 
+// 网络管理
 class NetworkManager {
     constructor() { this.peer = null; this.conn = null; this.isHost = false; this.connected = false; this.opponentName = "Opponent"; }
     generateShortId() { const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let r=''; for(let i=0;i<6;i++)r+=c.charAt(Math.floor(Math.random()*c.length)); return r; }
@@ -246,33 +296,24 @@ class NetworkManager {
     copyId() { const e=document.getElementById('host-id-val'); e.select(); e.setSelectionRange(0,99999); navigator.clipboard.writeText(e.value).then(()=>{ui.setStatus('host-status',game.text.id_copied);setTimeout(()=>ui.setStatus('host-status',game.text.status_wait),2000);}); }
 }
 
+// 音频
 const audio = {
     ctx: null, enabled: true,
     init: function() { if(!this.ctx){ this.ctx = new (window.AudioContext||window.webkitAudioContext)(); } if(this.ctx.state==='suspended')this.ctx.resume(); },
-    
     playHit: function(f) { 
-        if(!this.enabled||!this.ctx)return; 
-        const t=this.ctx.currentTime, o=this.ctx.createOscillator(), g=this.ctx.createGain(); 
+        if(!this.enabled||!this.ctx)return; const t=this.ctx.currentTime, o=this.ctx.createOscillator(), g=this.ctx.createGain(); 
         o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(40,t+0.05); 
         g.gain.setValueAtTime(Math.min(f,1)*0.8,t); g.gain.exponentialRampToValueAtTime(0.01,t+0.05); 
         o.connect(g); g.connect(this.ctx.destination); o.start(); o.stop(t+0.05); 
     },
-    
-    // 补全缺失的 playCushion 函数 (库边撞击声)
     playCushion: function(f) {
-        if(!this.enabled||!this.ctx) return;
-        const t = this.ctx.currentTime, o = this.ctx.createOscillator(), g = this.ctx.createGain();
-        o.type = 'triangle'; 
-        o.frequency.setValueAtTime(120, t); 
-        o.frequency.linearRampToValueAtTime(60, t + 0.1);
-        g.gain.setValueAtTime(Math.min(f,1)*0.5, t); 
-        g.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+        if(!this.enabled||!this.ctx) return; const t = this.ctx.currentTime, o = this.ctx.createOscillator(), g = this.ctx.createGain();
+        o.type = 'triangle'; o.frequency.setValueAtTime(120, t); o.frequency.linearRampToValueAtTime(60, t + 0.1);
+        g.gain.setValueAtTime(Math.min(f,1)*0.5, t); g.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
         o.connect(g); g.connect(this.ctx.destination); o.start(); o.stop(t + 0.1);
     },
-
     playPot: function() { 
-        if(!this.enabled||!this.ctx)return; 
-        const t=this.ctx.currentTime, o=this.ctx.createOscillator(), g=this.ctx.createGain(); 
+        if(!this.enabled||!this.ctx)return; const t=this.ctx.currentTime, o=this.ctx.createOscillator(), g=this.ctx.createGain(); 
         o.frequency.setValueAtTime(80,t); g.gain.setValueAtTime(0.5,t); g.gain.exponentialRampToValueAtTime(0.01,t+0.3); 
         o.connect(g); g.connect(this.ctx.destination); o.start(); o.stop(t+0.3); 
     }
@@ -301,7 +342,24 @@ class GameApp {
         this.state = { mode: 'PvCPU', turn: 'P1', phase: 'PLACING', target: 'RED', scoreP1: 0, scoreP2: 0, redsLeft: 15, msg: "", tempMsg: "", mousePos: {x:0,y:0}, aiState: 'IDLE' };
         this.dragStart = null; this.setupLang(); this.initPockets(); this.handleResize();
         window.addEventListener('resize', () => this.handleResize());
-        ['mousedown', 'mousemove', 'mouseup', 'touchstart', 'touchmove', 'touchend'].forEach(evt => window.addEventListener(evt, (e) => { if(evt==='mousedown'||evt==='touchstart') audio.init(); this.onInput(evt, e); }, {passive: false}));
+        
+        // 关键修复：事件监听区分
+        // 1. 按钮点击事件由浏览器默认处理，不在此监听
+        // 2. 只有触摸 Canvas 时，才进行游戏逻辑处理
+        const eventHandler = (e) => {
+            // 如果点的是按钮，直接忽略，让浏览器处理点击
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.closest('.menu-btn')) return;
+            
+            // 初始化音频
+            if(e.type === 'mousedown' || e.type === 'touchstart') audio.init();
+            
+            this.onInput(e.type, e);
+        };
+
+        ['mousedown', 'mousemove', 'mouseup', 'touchstart', 'touchmove', 'touchend'].forEach(evt => 
+            window.addEventListener(evt, eventHandler, {passive: false})
+        );
+        
         requestAnimationFrame(() => this.loop());
     }
 
@@ -378,8 +436,14 @@ class GameApp {
     getLogicPos(e) { const r = this.canvas.getBoundingClientRect(); let cx = e.clientX, cy = e.clientY; if (e.changedTouches && e.changedTouches.length > 0) { cx = e.changedTouches[0].clientX; cy = e.changedTouches[0].clientY; } return { x: (cx - r.left) / this.scaleX, y: (cy - r.top) / this.scaleY }; }
 
     onInput(type, e) {
-        if (type.startsWith('touch')) e.preventDefault(); const p = this.getLogicPos(e); this.state.mousePos = p;
-        if (e.target.closest('#btn-sound') || !this.isMyTurn()) return;
+        // 关键修复：如果是 Canvas，则阻止默认行为（滚动）；如果是按钮，则放行
+        if (e.target === this.canvas && type.startsWith('touch')) {
+            e.preventDefault();
+        }
+
+        const p = this.getLogicPos(e); this.state.mousePos = p;
+        if (!this.isMyTurn()) return;
+
         if (type === 'mousedown' || type === 'touchstart') {
             if (this.state.phase === 'PLACING' && this.isPlaceable(p)) { this.whiteBall.x = p.x; this.whiteBall.y = p.y; this.confirmPlacement(); if (network.connected) network.send({ type: 'PLACE_CUE', x: p.x, y: p.y }); }
             else if (this.state.phase === 'IDLE') this.dragStart = p;
@@ -397,7 +461,6 @@ class GameApp {
         this.whiteBall.vx = nx * p; this.whiteBall.vy = ny * p; this.state.phase = 'MOVING'; this.state.firstHit = null; this.state.potted = []; this.state.whiteFoul = false; audio.playHit(p/25); this.updateUI(); if (!remote && network.connected) network.send({ type: 'SHOOT', nx, ny, power: p }); 
     }
 
-    // 修复的核心：将 moving 的判断移到循环外部，防止微小震动导致死循环
     updatePhysics() {
         if (this.state.aiState === 'ANIMATING') return; 
         if (this.state.phase !== 'MOVING') return;
@@ -520,7 +583,6 @@ class GameApp {
 
     startAiLogic() { if (this.state.turn !== 'P2') return; this.state.aiState = 'THINKING'; this.updateUI(); if (!this.whiteBall.active) this.cpuPlaceBall(); setTimeout(() => this.cpuCalculate(), 500); }
     
-    // 关键修正：增加对 NaN 和除以零的防护
     cpuCalculate() {
         try {
             let targets = this.balls.filter(b => b.active && (b===this.whiteBall?false:(this.state.target==='RED'?b.type===1:(this.state.target==='COLOR'?b.type===2:b.val===this.state.target))));
