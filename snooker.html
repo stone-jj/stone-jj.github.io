@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Snooker V33 Online</title>
+    <title>Snooker V40 Stable</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; touch-action: none; user-select: none; -webkit-user-select: none; }
@@ -20,17 +20,16 @@
             color: #eee;
         }
 
-        /* 顶部计分板 */
         #ui-header {
             width: 100%;
             max-width: 850px;
-            height: 60px; /* 稍微调小高度 */
+            height: 60px;
             background: #1e1e1e;
             border-bottom: 3px solid #d4af37;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0 20px;
+            padding: 0 15px;
             border-radius: 8px 8px 0 0;
             position: relative;
             z-index: 10;
@@ -41,6 +40,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: center;
             min-width: 80px;
             opacity: 0.4;
             transition: all 0.3s;
@@ -48,34 +48,32 @@
         .player-box.active { opacity: 1; transform: scale(1.1); }
 
         .score-text { font-size: 28px; font-weight: 800; font-family: monospace; line-height: 1; color: #fff; }
-        .name-text { font-size: 12px; font-weight: bold; color: #aaa; margin-top: 4px; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .name-text { font-size: 12px; font-weight: bold; color: #aaa; margin-top: 5px; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .active .score-text { color: #ffd700; text-shadow: 0 0 15px rgba(255, 215, 0, 0.6); }
         .active .name-text { color: #d4af37; }
 
-        #msg-area { flex: 1; text-align: center; margin: 0 15px; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
-        #txt-main { font-size: 16px; font-weight: bold; color: #fff; white-space: nowrap; letter-spacing: 1px; min-height: 20px; }
-        #txt-sub { font-size: 12px; color: #888; margin-top: 2px; min-height: 16px; white-space: nowrap; }
+        #msg-area { flex: 1; text-align: center; margin: 0 5px; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
+        #txt-main { font-size: 15px; font-weight: bold; color: #fff; white-space: nowrap; letter-spacing: 1px; margin-bottom: 2px; }
+        #txt-sub { font-size: 12px; color: #888; min-height: 14px; white-space: nowrap; }
         .warn-text { color: #ff4444 !important; font-weight: bold; animation: flash 0.5s; }
         @keyframes flash { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 
         #btn-sound {
-            width: 32px; height: 32px; cursor: pointer;
+            width: 36px; height: 36px; cursor: pointer;
             background: rgba(255,255,255,0.1); border-radius: 50%; border: 1px solid #444;
             display: flex; align-items: center; justify-content: center;
             transition: background 0.2s;
         }
         #btn-sound:hover { background: rgba(255,255,255,0.2); }
-        #btn-sound svg { fill: #ddd; width: 18px; height: 18px; }
+        #btn-sound svg { fill: #ddd; width: 20px; height: 20px; }
 
-        /* 游戏画布容器 */
         #canvas-box {
             position: relative; width: 100%; max-width: 850px; aspect-ratio: 2/1; 
             background: #000; box-shadow: 0 20px 50px rgba(0,0,0,0.8); border-radius: 0 0 8px 8px;
-            overflow: hidden; /* 防止内容溢出 */
+            overflow: hidden;
         }
         canvas { display: block; width: 100%; height: 100%; border-radius: 0 0 8px 8px; }
         
-        /* === 菜单系统 (紧凑型设计) === */
         #menu-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(18, 18, 18, 0.98); 
@@ -83,61 +81,58 @@
             align-items: center; justify-content: center; 
             z-index: 100;
             transition: opacity 0.3s;
+            padding: 10px;
         }
-
-        /* 隐藏类，用于切换菜单 */
         .hidden { display: none !important; }
-
         .menu-container {
             display: flex; flex-direction: column; align-items: center; width: 100%;
+            max-height: 100%; overflow-y: auto; justify-content: center;
         }
-
-        .menu-logo { font-size: 32px; color: #d4af37; margin-bottom: 20px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; text-shadow: 0 2px 10px rgba(212, 175, 55, 0.3); }
-        
+        .menu-logo { font-size: 28px; color: #d4af37; margin-bottom: 15px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; text-shadow: 0 2px 10px rgba(212, 175, 55, 0.3); }
         .menu-btn {
             background: linear-gradient(135deg, #d4af37, #aa8c2c); 
-            color: #000; border: none; padding: 12px 0;
-            margin: 6px 0; font-size: 15px; font-weight: bold; cursor: pointer;
-            border-radius: 6px; width: 220px;
+            color: #000; border: none; padding: 10px 0;
+            margin: 5px 0; font-size: 15px; font-weight: bold; cursor: pointer;
+            border-radius: 6px; width: 200px;
             box-shadow: 0 3px 5px rgba(0,0,0,0.3);
             transition: transform 0.1s, filter 0.2s;
         }
         .menu-btn:active { transform: scale(0.96); }
         .menu-btn:hover { filter: brightness(1.1); }
-        .btn-secondary { background: #444; color: #fff; margin-top: 15px; }
+        .btn-secondary { background: #444; color: #fff; margin-top: 10px; }
         
-        .input-group { margin-bottom: 15px; text-align: center; }
-        .input-label { color: #888; font-size: 12px; margin-bottom: 4px; }
+        .input-group { margin-bottom: 10px; text-align: center; width: 100%; display: flex; flex-direction: column; align-items: center; }
+        .input-label { color: #888; font-size: 11px; margin-bottom: 3px; }
         .input-styled {
-            padding: 10px; border-radius: 6px; border: 2px solid #333; 
-            background: #222; color: #fff; width: 220px; 
-            text-align: center; font-size: 15px; outline: none; 
+            padding: 8px; border-radius: 6px; border: 2px solid #333; 
+            background: #222; color: #fff; width: 200px; 
+            text-align: center; font-size: 14px; outline: none; 
             transition: border-color 0.3s;
         }
         .input-styled:focus { border-color: #d4af37; }
+        .input-styled::placeholder { color: #555; }
 
-        /* ID 显示框 - 点击复制 */
         #host-id-display {
             display: none; background: #1a1a1a; border: 1px dashed #555; 
-            padding: 10px; border-radius: 8px; margin: 5px 0; width: 240px; text-align: center;
+            padding: 8px; border-radius: 8px; margin: 5px 0; width: 220px; text-align: center;
             cursor: pointer; transition: background 0.2s;
         }
         #host-id-display:hover { background: #252525; }
         #host-id-val {
-            font-size: 24px; font-weight: bold; color: #4CAF50; letter-spacing: 2px;
+            font-size: 20px; font-weight: bold; color: #4CAF50; letter-spacing: 2px;
             background: transparent; border: none; width: 100%; text-align: center; 
-            pointer-events: none; /* 让点击穿透到父容器 */
+            pointer-events: none; margin-top: 2px;
         }
         
-        .status-msg { color: #aaa; font-size: 12px; margin-top: 5px; min-height: 18px; }
+        .divider { width: 50%; height: 1px; background: #333; margin: 8px 0; }
+        .status-msg { color: #aaa; font-size: 11px; margin-top: 2px; min-height: 16px; }
 
-        /* 断线提示层 */
         #disconnect-modal {
             display: none; position: absolute; top:0; left:0; width:100%; height:100%;
             background: rgba(0,0,0,0.95); z-index: 200;
             flex-direction: column; align-items: center; justify-content: center;
         }
-        .err-title { color: #ff4444; font-size: 22px; font-weight: bold; margin-bottom: 10px; }
+        .err-title { color: #ff4444; font-size: 20px; font-weight: bold; margin-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -167,64 +162,48 @@
     <div id="canvas-box">
         <canvas id="gameCanvas"></canvas>
         
-        <!-- 菜单遮罩 -->
         <div id="menu-overlay">
-            
-            <!-- 主菜单 -->
             <div id="main-menu" class="menu-container">
                 <div class="menu-logo" id="menu-title">SNOOKER</div>
-                
                 <div class="input-group">
                     <div class="input-label" id="lbl-your-name">Your Name</div>
-                    <input type="text" id="my-name-input" class="input-styled" maxlength="8" value="Player">
+                    <input type="text" id="my-name-input" class="input-styled" maxlength="8" placeholder="Name">
                 </div>
-
                 <button class="menu-btn" id="btn-pvc" onclick="game.startGame('PvCPU')">Vs CPU</button>
                 <button class="menu-btn" id="btn-online" onclick="ui.showOnlineMenu()" style="background: #4CAF50; color:#fff">Online</button>
             </div>
 
-            <!-- 联机面板 -->
             <div id="online-panel" class="menu-container hidden">
-                <div class="menu-logo" id="online-title" style="font-size: 22px; margin-bottom: 15px;">Online</div>
-                
-                <!-- 创建房间 -->
-                <div style="border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 15px; width: 100%; display: flex; flex-direction: column; align-items: center;">
+                <div class="menu-logo" id="online-title" style="font-size: 20px; margin-bottom: 10px;">Online</div>
+                <div class="input-group">
                     <button class="menu-btn" id="btn-host" onclick="network.createRoom()">Host (Create)</button>
-                    <!-- ID 显示区域 -->
                     <div id="host-id-display" onclick="network.copyId()">
                         <div class="input-label" id="lbl-host-id">Click to Copy ID:</div>
                         <input type="text" id="host-id-val" readonly value="">
                         <div class="status-msg" id="host-status">...</div>
                     </div>
                 </div>
-
-                <!-- 加入房间 -->
-                <div style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+                <div class="divider"></div>
+                <div class="input-group">
                     <div class="input-label" id="lbl-join-id">Enter Friend's ID:</div>
                     <input type="text" id="join-id-input" class="input-styled" placeholder="ID" style="text-transform:uppercase;">
-                    <button class="menu-btn" id="btn-join" onclick="network.joinRoom()">Join</button>
+                    <button class="menu-btn" id="btn-join" onclick="network.joinRoom()" style="margin-top:8px">Join</button>
                     <div class="status-msg" id="join-status"></div>
                 </div>
-
                 <button class="menu-btn btn-secondary" id="btn-back" onclick="ui.backToMain()">Back</button>
             </div>
         </div>
 
-        <!-- 断线提示 -->
         <div id="disconnect-modal">
             <div class="err-title" id="err-title">Disconnected</div>
-            <div style="color:#aaa; margin-bottom: 20px;" id="err-desc">Connection lost</div>
-            <button class="menu-btn" onclick="location.reload()">Reload</button>
+            <div style="color:#aaa; margin-bottom: 20px; font-size:13px;" id="err-desc">Connection lost</div>
+            <button class="menu-btn" id="btn-reload" onclick="location.reload()">Reload</button>
         </div>
     </div>
 
 <script>
-// --- UI 管理器 ---
 const ui = {
-    showOnlineMenu: () => {
-        document.getElementById('main-menu').classList.add('hidden');
-        document.getElementById('online-panel').classList.remove('hidden');
-    },
+    showOnlineMenu: () => { document.getElementById('main-menu').classList.add('hidden'); document.getElementById('online-panel').classList.remove('hidden'); },
     backToMain: () => {
         if(network.peer) { network.peer.destroy(); network.peer = null; }
         document.getElementById('online-panel').classList.add('hidden');
@@ -238,117 +217,68 @@ const ui = {
     showDisconnect: () => { document.getElementById('disconnect-modal').style.display = 'flex'; }
 };
 
-// --- 网络模块 ---
 class NetworkManager {
-    constructor() {
-        this.peer = null; this.conn = null;
-        this.isHost = false; this.connected = false;
-        this.opponentName = "Opponent";
+    constructor() { this.peer = null; this.conn = null; this.isHost = false; this.connected = false; this.opponentName = "Opponent"; }
+    generateShortId() { const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let r=''; for(let i=0;i<6;i++)r+=c.charAt(Math.floor(Math.random()*c.length)); return r; }
+    initPeer(customId=null) {
+        if(this.peer)return; this.peer=new Peer(customId,{debug:1});
+        this.peer.on('error',(err)=>{ if(err.type==='unavailable-id'){this.peer=null;this.createRoom();}else{ui.setStatus('host-status',"Err:"+err.type);ui.setStatus('join-status',"Err:"+err.type);} });
+        this.peer.on('disconnected',()=>{if(this.connected)ui.showDisconnect();});
     }
-
-    generateShortId() {
-        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; 
-        let result = '';
-        for (let i = 0; i < 6; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
-        return result;
-    }
-
-    initPeer(customId = null) {
-        if (this.peer) return;
-        this.peer = new Peer(customId, { debug: 1 });
-        this.peer.on('error', (err) => {
-            console.error(err);
-            if (err.type === 'unavailable-id') { this.peer = null; this.createRoom(); } 
-            else { ui.setStatus('host-status', "Err: " + err.type); ui.setStatus('join-status', "Err: " + err.type); }
-        });
-        this.peer.on('disconnected', () => { if(this.connected) ui.showDisconnect(); });
-    }
-
-    createRoom() {
-        this.initPeer(this.generateShortId());
-        this.isHost = true;
-        this.peer.on('open', (id) => {
-            document.getElementById('host-id-display').style.display = 'block';
-            document.getElementById('host-id-val').value = id;
-            ui.setStatus('host-status', game.text.status_wait);
-        });
-        this.peer.on('connection', (conn) => { this.handleConnection(conn); });
-    }
-
-    joinRoom() {
-        let hostId = document.getElementById('join-id-input').value.trim().toUpperCase();
-        if(!hostId) return alert(game.text.alert_input_id);
-        this.initPeer(null); 
-        this.isHost = false;
-        ui.setStatus('join-status', game.text.connecting);
-        this.peer.on('open', () => {
-            const conn = this.peer.connect(hostId);
-            this.handleConnection(conn);
-        });
-    }
-
+    createRoom() { this.initPeer(this.generateShortId()); this.isHost=true; this.peer.on('open',(id)=>{document.getElementById('host-id-display').style.display='block';document.getElementById('host-id-val').value=id;ui.setStatus('host-status',game.text.status_wait);}); this.peer.on('connection',(c)=>{this.handleConnection(c);}); }
+    joinRoom() { let id=document.getElementById('join-id-input').value.trim().toUpperCase(); if(!id)return alert(game.text.alert_input_id); this.initPeer(null); this.isHost=false; ui.setStatus('join-status',game.text.connecting); this.peer.on('open',()=>{this.handleConnection(this.peer.connect(id));}); }
     handleConnection(conn) {
-        this.conn = conn;
-        const myName = document.getElementById('my-name-input').value || "Player";
-        this.conn.on('open', () => {
-            this.connected = true;
-            this.send({ type: 'NAME_HANDSHAKE', name: myName });
-        });
-        this.conn.on('data', (data) => { this.handleData(data); });
-        this.conn.on('close', () => { ui.showDisconnect(); });
-        this.conn.on('error', () => { ui.showDisconnect(); });
+        this.conn=conn; const name=document.getElementById('my-name-input').value||game.text.default_player;
+        this.conn.on('open',()=>{this.connected=true;this.send({type:'NAME_HANDSHAKE',name:name});});
+        this.conn.on('data',(d)=>{this.handleData(d);});
+        this.conn.on('close',()=>{ui.showDisconnect();}); this.conn.on('error',()=>{ui.showDisconnect();});
     }
-
-    send(data) { if (this.connected && this.conn) this.conn.send(data); }
-
-    handleData(data) {
-        switch(data.type) {
-            case 'NAME_HANDSHAKE':
-                this.opponentName = data.name;
-                if (this.isHost) {
-                    const myName = document.getElementById('my-name-input').value || "Host";
-                    this.send({ type: 'NAME_HANDSHAKE_ACK', name: myName });
-                    ui.setStatus('host-status', game.text.friend_joined);
-                    setTimeout(() => { game.startGame('ONLINE_HOST', myName, this.opponentName); game.syncToClient(); }, 800);
-                }
-                break;
-            case 'NAME_HANDSHAKE_ACK':
-                this.opponentName = data.name;
-                const myName = document.getElementById('my-name-input').value || "Client";
-                ui.setStatus('join-status', game.text.connected_wait);
-                setTimeout(() => { game.startGame('ONLINE_CLIENT', myName, this.opponentName); }, 500);
-                break;
-            case 'SYNC_STATE': if (!this.isHost) game.applySyncState(data.payload); break;
-            case 'SHOOT': game.executeShoot(data.nx, data.ny, data.power, true); break;
-            case 'PLACE_CUE': if (game.state.phase === 'PLACING') { game.whiteBall.x = data.x; game.whiteBall.y = data.y; game.confirmPlacement(true); } break;
+    send(data) { if(this.connected&&this.conn)this.conn.send(data); }
+    handleData(d) {
+        switch(d.type) {
+            case 'NAME_HANDSHAKE': this.opponentName=d.name; if(this.isHost){const n=document.getElementById('my-name-input').value||game.text.default_p1;this.send({type:'NAME_HANDSHAKE_ACK',name:n});ui.setStatus('host-status',game.text.friend_joined);setTimeout(()=>{game.startGame('ONLINE_HOST',n,this.opponentName);game.syncToClient();},800);} break;
+            case 'NAME_HANDSHAKE_ACK': this.opponentName=d.name; const n=document.getElementById('my-name-input').value||game.text.default_p2;ui.setStatus('join-status',game.text.connected_wait);setTimeout(()=>{game.startGame('ONLINE_CLIENT',n,this.opponentName);},500); break;
+            case 'SYNC_STATE': if(!this.isHost)game.applySyncState(d.payload); break;
+            case 'SHOOT': game.executeShoot(d.nx,d.ny,d.power,true); break;
+            case 'PLACE_CUE': if(game.state.phase==='PLACING'){game.whiteBall.x=d.x;game.whiteBall.y=d.y;game.confirmPlacement(true);} break;
         }
     }
-
-    // 复制 ID 功能
-    copyId() {
-        const idVal = document.getElementById('host-id-val');
-        idVal.select();
-        idVal.setSelectionRange(0, 99999);
-        navigator.clipboard.writeText(idVal.value).then(() => {
-            ui.setStatus('host-status', game.text.id_copied);
-            setTimeout(() => ui.setStatus('host-status', game.text.status_wait), 2000);
-        });
-    }
+    copyId() { const e=document.getElementById('host-id-val'); e.select(); e.setSelectionRange(0,99999); navigator.clipboard.writeText(e.value).then(()=>{ui.setStatus('host-status',game.text.id_copied);setTimeout(()=>ui.setStatus('host-status',game.text.status_wait),2000);}); }
 }
 
 const audio = {
     ctx: null, enabled: true,
     init: function() { if(!this.ctx){ this.ctx = new (window.AudioContext||window.webkitAudioContext)(); } if(this.ctx.state==='suspended')this.ctx.resume(); },
-    playHit: function(f) { if(!this.enabled||!this.ctx)return; const t=this.ctx.currentTime; const o=this.ctx.createOscillator(); const g=this.ctx.createGain(); o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(40,t+0.05); g.gain.setValueAtTime(Math.min(f,1)*0.8,t); g.gain.exponentialRampToValueAtTime(0.01,t+0.05); o.connect(g); g.connect(this.ctx.destination); o.start(); o.stop(t+0.05); },
-    playPot: function() { if(!this.enabled||!this.ctx)return; const t=this.ctx.currentTime; const o=this.ctx.createOscillator(); const g=this.ctx.createGain(); o.frequency.setValueAtTime(80,t); g.gain.setValueAtTime(0.5,t); g.gain.exponentialRampToValueAtTime(0.01,t+0.3); o.connect(g); g.connect(this.ctx.destination); o.start(); o.stop(t+0.3); }
+    
+    playHit: function(f) { 
+        if(!this.enabled||!this.ctx)return; 
+        const t=this.ctx.currentTime, o=this.ctx.createOscillator(), g=this.ctx.createGain(); 
+        o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(40,t+0.05); 
+        g.gain.setValueAtTime(Math.min(f,1)*0.8,t); g.gain.exponentialRampToValueAtTime(0.01,t+0.05); 
+        o.connect(g); g.connect(this.ctx.destination); o.start(); o.stop(t+0.05); 
+    },
+    
+    // 补全缺失的 playCushion 函数 (库边撞击声)
+    playCushion: function(f) {
+        if(!this.enabled||!this.ctx) return;
+        const t = this.ctx.currentTime, o = this.ctx.createOscillator(), g = this.ctx.createGain();
+        o.type = 'triangle'; 
+        o.frequency.setValueAtTime(120, t); 
+        o.frequency.linearRampToValueAtTime(60, t + 0.1);
+        g.gain.setValueAtTime(Math.min(f,1)*0.5, t); 
+        g.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+        o.connect(g); g.connect(this.ctx.destination); o.start(); o.stop(t + 0.1);
+    },
+
+    playPot: function() { 
+        if(!this.enabled||!this.ctx)return; 
+        const t=this.ctx.currentTime, o=this.ctx.createOscillator(), g=this.ctx.createGain(); 
+        o.frequency.setValueAtTime(80,t); g.gain.setValueAtTime(0.5,t); g.gain.exponentialRampToValueAtTime(0.01,t+0.3); 
+        o.connect(g); g.connect(this.ctx.destination); o.start(); o.stop(t+0.3); 
+    }
 };
 
-document.getElementById('btn-sound').addEventListener('click', (e) => {
-    e.stopPropagation(); audio.enabled = !audio.enabled;
-    document.getElementById('icon-on').style.display = audio.enabled ? 'block' : 'none';
-    document.getElementById('icon-off').style.display = audio.enabled ? 'none' : 'block';
-    if(audio.enabled) audio.init();
-});
+document.getElementById('btn-sound').addEventListener('click', (e) => { e.stopPropagation(); audio.enabled = !audio.enabled; document.getElementById('icon-on').style.display = audio.enabled ? 'block' : 'none'; document.getElementById('icon-off').style.display = audio.enabled ? 'none' : 'block'; if(audio.enabled) audio.init(); });
 
 const TYPES = { CUE: 0, RED: 1, COLOR: 2 };
 const COLS = { BALLS: { WHITE:'#f5f5f5', RED:'#cc0000', YELLOW:'#ffcc00', GREEN:'#006633', BROWN:'#663300', BLUE:'#003399', PINK:'#ff9999', BLACK:'#0a0a0a' } };
@@ -377,64 +307,50 @@ class GameApp {
 
     setupLang() {
         const zh = {
-            default_p1: "玩家 1", default_p2: "玩家 2", cpu: "电脑", me: "我", opp: "对手",
+            default_p1: "玩家 1", default_p2: "玩家 2", default_player: "玩家", cpu: "电脑", me: "我", opp: "对手",
             target_red: "目标: 红球 (1分)", target_any: "目标: 任意彩球", target_ball: "目标: ",
             foul: "犯规! ", score_plus: "加分 +", place: "D区半圆内点击放球", drag: "拖拽击球", wait_opp: "对方回合...",
-            wait: "运动中...", think: "电脑思考中...", win: " 获胜!",
+            think: "电脑思考中...", shooting: "电脑击球中...",
+            wait: "运动中...", win: " 获胜!",
             menu_title: "斯诺克对决", btn_pvc: "单人 vs 电脑", btn_online: "在线双人联机", online_title: "联机对战",
             btn_host: "我是房主 (创建)", lbl_host_id: "点击 ID 复制给好友:", status_wait: "等待连接...", id_copied: "已复制!",
             lbl_join_id: "或者输入好友的 ID:", btn_join: "加入游戏", btn_back: "返回",
-            lbl_your_name: "你的名字",
+            lbl_your_name: "你的名字", ph_your_name: "名字或昵称",
             net_err: "连接错误: ", room_created: "房间已创建，等待好友...", friend_joined: "好友已连接！",
-            connecting: "正在连接...", connected_wait: "连接成功！", disconnected: "连接已断开", alert_input_id: "请输入房主 ID",
+            connecting: "正在连接...", connected_wait: "连接成功！", disconnected: "连接已断开", err_desc: "连接意外中断或对方已离开", btn_reload: "重新加载", alert_input_id: "请输入房主 ID",
             balls: ["", "", "黄球", "绿球", "棕球", "蓝球", "粉球", "黑球"]
         };
         const en = {
-            default_p1: "Player 1", default_p2: "Player 2", cpu: "CPU", me: "YOU", opp: "OPPONENT",
+            default_p1: "Player 1", default_p2: "Player 2", default_player: "Player", cpu: "CPU", me: "YOU", opp: "OPPONENT",
             target_red: "Target: RED", target_any: "Target: COLOR", target_ball: "Target: ",
             foul: "FOUL! ", score_plus: "Score +", place: "Place Cue Ball", drag: "Drag to Shoot", wait_opp: "Opponent's Turn...",
-            wait: "Rolling...", think: "Thinking...", win: " WIN!",
+            think: "Thinking...", shooting: "Shooting...",
+            wait: "Rolling...", win: " WIN!",
             menu_title: "SNOOKER", btn_pvc: "Vs CPU", btn_online: "Online", online_title: "Online Match",
             btn_host: "Host Game", lbl_host_id: "Click ID to Copy:", status_wait: "Waiting...", id_copied: "Copied!",
             lbl_join_id: "Or Enter Friend's ID:", btn_join: "Join", btn_back: "Back",
-            lbl_your_name: "Your Name",
+            lbl_your_name: "Your Name", ph_your_name: "Name or Nickname",
             net_err: "Error: ", room_created: "Room Ready", friend_joined: "Connected!",
-            connecting: "Connecting...", connected_wait: "Connected!", disconnected: "Disconnected", alert_input_id: "Enter Host ID",
+            connecting: "Connecting...", connected_wait: "Connected!", disconnected: "Disconnected", err_desc: "Connection lost or opponent left", btn_reload: "Reload", alert_input_id: "Enter Host ID",
             balls: ["", "", "Yellow", "Green", "Brown", "Blue", "Pink", "Black"]
         };
-        
         this.text = (navigator.language || 'en').startsWith('zh') ? zh : en;
-        
-        // 初始设置 P1 P2 名字
-        setText('name-p1', this.text.default_p1);
-        setText('name-p2', this.text.default_p2);
-        
-        // 应用翻译
-        setText('menu-title', this.text.menu_title);
-        setText('lbl-your-name', this.text.lbl_your_name);
-        setText('btn-pvc', this.text.btn_pvc);
-        setText('btn-online', this.text.btn_online);
-        setText('online-title', this.text.online_title);
-        setText('btn-host', this.text.btn_host);
-        setText('lbl-host-id', this.text.lbl_host_id);
-        setText('host-status', this.text.status_wait);
-        setText('lbl-join-id', this.text.lbl_join_id);
-        setText('btn-join', this.text.btn_join);
-        setText('btn-back', this.text.btn_back);
-        setText('err-title', this.text.disconnected);
+        setText('name-p1', this.text.default_p1); setText('name-p2', this.text.default_p2);
+        setText('menu-title', this.text.menu_title); setText('lbl-your-name', this.text.lbl_your_name);
+        document.getElementById('my-name-input').placeholder = this.text.ph_your_name;
+        setText('btn-pvc', this.text.btn_pvc); setText('btn-online', this.text.btn_online); setText('online-title', this.text.online_title);
+        setText('btn-host', this.text.btn_host); setText('lbl-host-id', this.text.lbl_host_id); setText('host-status', this.text.status_wait);
+        setText('lbl-join-id', this.text.lbl_join_id); setText('btn-join', this.text.btn_join); setText('btn-back', this.text.btn_back);
+        setText('err-title', this.text.disconnected); setText('err-desc', this.text.err_desc); setText('btn-reload', this.text.btn_reload);
     }
 
-    startGame(mode, myName, oppName) {
-        this.state.mode = mode;
-        document.getElementById('menu-overlay').style.display = 'none';
-        let n1, n2;
-        if (mode === 'ONLINE_HOST') { n1 = myName; n2 = oppName; }
-        else if (mode === 'ONLINE_CLIENT') { n1 = oppName; n2 = myName; }
-        else { n1 = document.getElementById('my-name-input').value || this.text.default_p1; n2 = this.text.cpu; }
-        setText('name-p1', n1); setText('name-p2', n2);
-        
-        if (mode === 'ONLINE_CLIENT') this.balls = []; 
-        else { this.resetTable(); if (mode === 'ONLINE_HOST') this.syncToClient(); }
+    startGame(mode, n1, n2) {
+        this.state.mode = mode; document.getElementById('menu-overlay').style.display = 'none';
+        const myInput = document.getElementById('my-name-input').value; const fallback = myInput?myInput:this.text.default_p1;
+        if (mode === 'ONLINE_HOST') { setText('name-p1', n1); setText('name-p2', n2); }
+        else if (mode === 'ONLINE_CLIENT') { setText('name-p1', n2); setText('name-p2', n1); }
+        else { setText('name-p1', fallback); setText('name-p2', this.text.cpu); }
+        if (mode === 'ONLINE_CLIENT') this.balls = []; else { this.resetTable(); if (mode === 'ONLINE_HOST') this.syncToClient(); }
     }
 
     handleResize() { const box = document.getElementById('canvas-box'); if (!box) return; const rect = box.getBoundingClientRect(); const dpr = window.devicePixelRatio || 1; this.canvas.width = rect.width * dpr; this.canvas.height = rect.height * dpr; this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0); this.scaleX = rect.width / this.LOGICAL_W; this.scaleY = rect.height / this.LOGICAL_H; }
@@ -443,39 +359,19 @@ class GameApp {
     resetTable() {
         this.balls = []; this.whiteBall = this.createBall(0, -999, -999, 0, 4, '#f5f5f5'); this.whiteBall.active = false; this.balls.push(this.whiteBall);
         const add = (c, v, xr, yo) => this.balls.push(this.createBall(this.balls.length, 40 + 820*xr, 225+yo, 2, v, c));
-        const C = COLS.BALLS;
-        add(C.YELLOW, 2, 0.2, 60); add(C.GREEN, 3, 0.2, -60); add(C.BROWN, 4, 0.2, 0); add(C.BLUE, 5, 0.5, 0); add(C.PINK, 6, 0.75, 0); add(C.BLACK, 7, 0.91, 0);
+        const C = COLS.BALLS; add(C.YELLOW, 2, 0.2, 60); add(C.GREEN, 3, 0.2, -60); add(C.BROWN, 4, 0.2, 0); add(C.BLUE, 5, 0.5, 0); add(C.PINK, 6, 0.75, 0); add(C.BLACK, 7, 0.91, 0);
         let idCounter = 20; const startX = 40 + 820 * 0.75 + 17 + 4;
         for (let c=0; c<5; c++) { for (let r=0; r<=c; r++) { let x = startX + c * 15; let y = 225 - (c*8.5) + (r*17.2); this.balls.push(this.createBall(idCounter++, x+Math.random(), y+Math.random(), 1, 1, C.RED)); } }
-        this.state.redsLeft = 15; this.state.phase = 'PLACING'; this.state.turn = 'P1'; this.state.scoreP1 = 0; this.state.scoreP2 = 0; this.state.target = 'RED';
-        this.updateUI();
+        this.state.redsLeft = 15; this.state.phase = 'PLACING'; this.state.turn = 'P1'; this.state.scoreP1 = 0; this.state.scoreP2 = 0; this.state.target = 'RED'; this.updateUI();
     }
     createBall(id, x, y, type, val, color) { return { id, x, y, type, val, color, vx: 0, vy: 0, active: true, spotX: type===2?x:null, spotY: type===2?y:null }; }
 
-    syncToClient(foulMsg = null) {
-        if (this.state.mode !== 'ONLINE_HOST' || !network.connected) return;
-        const payload = {
-            balls: this.balls.map(b => ({ id:b.id, x:b.x, y:b.y, type:b.type, val:b.val, color:b.color, vx:b.vx, vy:b.vy, active:b.active })),
-            scoreP1: this.state.scoreP1, scoreP2: this.state.scoreP2,
-            turn: this.state.turn, phase: this.state.phase, target: this.state.target,
-            whiteFoul: this.state.whiteFoul, redsLeft: this.state.redsLeft,
-            tempMsg: foulMsg 
-        };
-        network.send({ type: 'SYNC_STATE', payload: payload });
-    }
-
+    syncToClient(foulMsg) { if (this.state.mode !== 'ONLINE_HOST' || !network.connected) return; const payload = { balls: this.balls.map(b => ({ id:b.id, x:b.x, y:b.y, type:b.type, val:b.val, color:b.color, vx:b.vx, vy:b.vy, active:b.active })), scoreP1: this.state.scoreP1, scoreP2: this.state.scoreP2, turn: this.state.turn, phase: this.state.phase, target: this.state.target, whiteFoul: this.state.whiteFoul, redsLeft: this.state.redsLeft, tempMsg: foulMsg }; network.send({ type: 'SYNC_STATE', payload: payload }); }
     applySyncState(data) {
-        if (this.balls.length === 0 && data.balls.length > 0) {
-            this.balls = data.balls.map(b => ({ id:b.id, x:b.x, y:b.y, type:b.type, val:b.val, color:b.color, vx:b.vx, vy:b.vy, active:b.active, spotX: (b.type===2?b.x:null), spotY: (b.type===2?b.y:null) }));
-        } else {
-            data.balls.forEach(rb => { let lb = this.balls.find(b => b.id === rb.id); if (lb) { lb.x = rb.x; lb.y = rb.y; lb.vx = rb.vx; lb.vy = rb.vy; lb.active = rb.active; } });
-        }
-        this.whiteBall = this.balls.find(b => b.type === 0);
-        this.state.scoreP1 = data.scoreP1; this.state.scoreP2 = data.scoreP2;
-        this.state.turn = data.turn; this.state.phase = data.phase;
-        this.state.target = data.target; this.state.redsLeft = data.redsLeft;
-        if (data.tempMsg) this.showTempMsg(data.tempMsg);
-        this.updateUI();
+        if (this.balls.length === 0 && data.balls.length > 0) this.balls = data.balls.map(b => ({ id:b.id, x:b.x, y:b.y, type:b.type, val:b.val, color:b.color, vx:b.vx, vy:b.vy, active:b.active, spotX: (b.type===2?b.x:null), spotY: (b.type===2?b.y:null) }));
+        else data.balls.forEach(rb => { let lb = this.balls.find(b => b.id === rb.id); if (lb) { lb.x = rb.x; lb.y = rb.y; lb.vx = rb.vx; lb.vy = rb.vy; lb.active = rb.active; } });
+        this.whiteBall = this.balls.find(b => b.type === 0); this.state.scoreP1 = data.scoreP1; this.state.scoreP2 = data.scoreP2; this.state.turn = data.turn; this.state.phase = data.phase; this.state.target = data.target; this.state.redsLeft = data.redsLeft;
+        if (data.tempMsg) this.showTempMsg(data.tempMsg); this.updateUI();
     }
 
     isMyTurn() { if (this.state.mode === 'PvCPU') return this.state.turn === 'P1'; if (this.state.mode === 'ONLINE_HOST') return this.state.turn === 'P1'; if (this.state.mode === 'ONLINE_CLIENT') return this.state.turn === 'P2'; return false; }
@@ -496,15 +392,32 @@ class GameApp {
 
     confirmPlacement(remote) { this.whiteBall.vx=0; this.whiteBall.vy=0; this.whiteBall.active=true; this.state.phase = 'IDLE'; this.state.tempMsg = ""; audio.playHit(0.5); this.updateUI(); if (this.state.mode === 'ONLINE_HOST' && !remote) this.syncToClient(); }
     isPlaceable(p) { const m = 48.5; if (p.x<m || p.x>900-m || p.y<m || p.y>450-m || p.x>204) return false; return Math.hypot(p.x-204, p.y-225) <= 60 && !this.balls.some(b => b.active && b!==this.whiteBall && Math.hypot(b.x-p.x, b.y-p.y) < 17); }
-    executeShoot(nx, ny, p, remote) { if (p < 0.5) return; this.whiteBall.vx = nx * p; this.whiteBall.vy = ny * p; this.state.phase = 'MOVING'; this.state.firstHit = null; this.state.potted = []; this.state.whiteFoul = false; audio.playHit(p/25); this.updateUI(); if (!remote && network.connected) network.send({ type: 'SHOOT', nx, ny, power: p }); }
+    executeShoot(nx, ny, p, remote) { 
+        if (isNaN(nx) || isNaN(ny) || isNaN(p)) { nx = 1; ny = 0; p = 1; } // Safety fallback
+        this.whiteBall.vx = nx * p; this.whiteBall.vy = ny * p; this.state.phase = 'MOVING'; this.state.firstHit = null; this.state.potted = []; this.state.whiteFoul = false; audio.playHit(p/25); this.updateUI(); if (!remote && network.connected) network.send({ type: 'SHOOT', nx, ny, power: p }); 
+    }
 
+    // 修复的核心：将 moving 的判断移到循环外部，防止微小震动导致死循环
     updatePhysics() {
         if (this.state.aiState === 'ANIMATING') return; 
         if (this.state.phase !== 'MOVING') return;
-        let moving = false;
+        
+        // 1. 先进行物理迭代
         for (let s=0; s<8; s++) {
-            this.balls.forEach(b => { if (!b.active) return; b.x+=b.vx; b.y+=b.vy; b.vx*=0.978; b.vy*=0.978; if(Math.hypot(b.vx,b.vy)>0.035)moving=true;else{b.vx=0;b.vy=0;} });
-            const m = 48.5; this.balls.forEach(b => { if(!b.active)return; if(b.x<m){b.x=m;b.vx*=-0.65;audio.playCushion(Math.hypot(b.vx,b.vy)/10);} else if(b.x>900-m){b.x=900-m;b.vx*=-0.65;audio.playCushion(Math.hypot(b.vx,b.vy)/10);} if(b.y<m){b.y=m;b.vy*=-0.65;audio.playCushion(Math.hypot(b.vx,b.vy)/10);} else if(b.y>450-m){b.y=450-m;b.vy*=-0.65;audio.playCushion(Math.hypot(b.vx,b.vy)/10);} });
+            this.balls.forEach(b => { 
+                if (!b.active) return; 
+                b.x += b.vx; b.y += b.vy; 
+                b.vx *= 0.978; b.vy *= 0.978; 
+                
+                // 增加：如果速度极小，强制归零，防止浮点数震荡
+                if(Math.abs(b.vx) < 0.005) b.vx = 0;
+                if(Math.abs(b.vy) < 0.005) b.vy = 0;
+            });
+            
+            // 碰撞检测逻辑保持不变
+            const m = 48.5; 
+            this.balls.forEach(b => { if(!b.active)return; if(b.x<m){b.x=m;b.vx*=-0.65;audio.playCushion(Math.hypot(b.vx,b.vy)/10);} else if(b.x>900-m){b.x=900-m;b.vx*=-0.65;audio.playCushion(Math.hypot(b.vx,b.vy)/10);} if(b.y<m){b.y=m;b.vy*=-0.65;audio.playCushion(Math.hypot(b.vx,b.vy)/10);} else if(b.y>450-m){b.y=450-m;b.vy*=-0.65;audio.playCushion(Math.hypot(b.vx,b.vy)/10);} });
+            
             for(let i=0;i<this.balls.length;i++) for(let j=i+1;j<this.balls.length;j++) {
                 let b1=this.balls[i], b2=this.balls[j]; if(!b1.active||!b2.active)continue; let dx=b1.x-b2.x, dy=b1.y-b2.y, d=Math.sqrt(dx*dx+dy*dy);
                 if(d<17) {
@@ -516,7 +429,20 @@ class GameApp {
             }
             this.balls.forEach(b => { if(!b.active)return; for(let p of this.pockets) if(Math.hypot(b.x-p.x, b.y-p.y)<16) { b.active=false; b.vx=0; b.vy=0; if(b===this.whiteBall)this.state.whiteFoul=true; else this.state.potted.push(b); audio.playPot(); break; } });
         }
-        if (!moving) { this.state.phase = 'IDLE'; if (this.state.mode === 'ONLINE_HOST' || !this.state.mode.startsWith('ONLINE')) this.settleTurn(); }
+
+        // 2. 检查是否所有球都真的停了 (Velocity Threshold Check)
+        let isAnyBallMoving = false;
+        this.balls.forEach(b => {
+            if(b.active && Math.hypot(b.vx, b.vy) > 0.035) isAnyBallMoving = true;
+        });
+
+        // 3. 只有当确实没有球在动时，才切换状态
+        if (!isAnyBallMoving) { 
+            this.state.phase = 'IDLE'; 
+            if (this.state.mode === 'ONLINE_HOST' || !this.state.mode.startsWith('ONLINE')) {
+                this.settleTurn(); 
+            }
+        }
     }
 
     settleTurn() {
@@ -542,6 +468,7 @@ class GameApp {
             }
             if (!foul) validPot = true;
         }
+        
         let reds = this.balls.filter(b => b.type === 1 && b.active).length;
         this.state.redsLeft = reds;
         this.state.potted.forEach(b => {
@@ -554,45 +481,33 @@ class GameApp {
         
         let opp = this.state.turn === 'P1' ? 'scoreP2' : 'scoreP1';
         if (foul) {
-            this.state[opp] += penalty;
-            foulMsg = `${this.text.foul} ${this.text.score_plus}${penalty}`;
-            this.showTempMsg(foulMsg);
+            this.state[opp] += penalty; foulMsg = `${this.text.foul} ${this.text.score_plus}${penalty}`; this.showTempMsg(foulMsg);
             const winScoreEl = document.getElementById(this.state.turn === 'P1' ? 'score-p2' : 'score-p1');
             winScoreEl.classList.add('flash-red'); setTimeout(() => winScoreEl.classList.remove('flash-red'), 500);
             this.changeTurn(this.state.whiteFoul, foulMsg);
         } else if (validPot) {
-            let my = this.state.turn === 'P1' ? 'scoreP1' : 'scoreP2';
-            this.state[my] += turnScore;
+            let my = this.state.turn === 'P1' ? 'scoreP1' : 'scoreP2'; this.state[my] += turnScore;
             if (isRed) this.state.target = 'COLOR';
             else if (this.state.target === 'COLOR') { if (reds > 0) this.state.target = 'RED'; else this.state.target = 2; }
             else { this.state.target++; if (this.state.target > 7) { this.handleGameOver(); return; } }
             this.updateUI();
             if (this.state.mode === 'PvCPU' && this.state.turn === 'P2') setTimeout(() => this.startAiLogic(), 1000);
             if (this.state.mode === 'ONLINE_HOST') this.syncToClient();
-        } else {
-            this.changeTurn(false);
-        }
+        } else { this.changeTurn(false); }
     }
 
     handleGameOver() {
         this.state.phase = 'IDLE'; 
         let winner = this.state.scoreP1 > this.state.scoreP2 ? document.getElementById('name-p1').innerText : document.getElementById('name-p2').innerText;
-        alert("GAME OVER! " + winner + " Wins!");
-        location.reload();
+        alert("GAME OVER! " + winner + " Wins!"); location.reload();
     }
 
-    showTempMsg(msg) {
-        this.state.tempMsg = msg; this.updateUI();
-        if (this.state.tempMsgTimer) clearTimeout(this.state.tempMsgTimer);
-        this.state.tempMsgTimer = setTimeout(() => { this.state.tempMsg = ""; this.updateUI(); }, 3000);
-    }
+    showTempMsg(msg) { this.state.tempMsg = msg; this.updateUI(); if (this.state.tempMsgTimer) clearTimeout(this.state.tempMsgTimer); this.state.tempMsgTimer = setTimeout(() => { this.state.tempMsg = ""; this.updateUI(); }, 3000); }
 
     changeTurn(ballInHand, foulMsg = null) {
         this.state.turn = (this.state.turn === 'P1') ? 'P2' : 'P1';
         if (this.state.redsLeft > 0) this.state.target = 'RED';
-        if (ballInHand) {
-            if (this.state.mode === 'PvCPU' && this.state.turn === 'P2') { this.cpuPlaceBall(); this.state.phase = 'IDLE'; } else { this.state.phase = 'PLACING'; }
-        } else { this.state.phase = 'IDLE'; }
+        if (ballInHand) { if (this.state.mode === 'PvCPU' && this.state.turn === 'P2') { this.cpuPlaceBall(); this.state.phase = 'IDLE'; } else { this.state.phase = 'PLACING'; } } else { this.state.phase = 'IDLE'; }
         this.updateUI();
         if (this.state.mode === 'PvCPU' && this.state.turn === 'P2' && this.state.phase === 'IDLE') setTimeout(() => this.startAiLogic(), 1500);
         if (this.state.mode === 'ONLINE_HOST') this.syncToClient(foulMsg);
@@ -603,22 +518,44 @@ class GameApp {
         do { let a = Math.PI/2 + Math.random()*Math.PI; let r = Math.random() * 51.5; this.whiteBall.x = 204 + Math.cos(a)*r; this.whiteBall.y = 225 + Math.sin(a)*r; } while(this.balls.some(b => b!==this.whiteBall && b.active && Math.hypot(b.x-this.whiteBall.x, b.y-this.whiteBall.y) < 17));
     }
 
-    startAiLogic() { if (this.state.turn !== 'P2') return; this.state.aiState = 'THINKING'; if (!this.whiteBall.active) this.cpuPlaceBall(); setTimeout(() => this.cpuCalculate(), 500); }
+    startAiLogic() { if (this.state.turn !== 'P2') return; this.state.aiState = 'THINKING'; this.updateUI(); if (!this.whiteBall.active) this.cpuPlaceBall(); setTimeout(() => this.cpuCalculate(), 500); }
+    
+    // 关键修正：增加对 NaN 和除以零的防护
     cpuCalculate() {
-        let targets = this.balls.filter(b => b.active && (b===this.whiteBall?false:(this.state.target==='RED'?b.type===1:(this.state.target==='COLOR'?b.type===2:b.val===this.state.target))));
-        if (targets.length === 0) { this.startAiAnimation({x: 1, y: 0}, 5); return; }
-        let best = null; let maxScore = -9999;
-        targets.forEach(t => {
-            this.pockets.forEach(p => {
-                let dx = p.x - t.x, dy = p.y - t.y; let dist = Math.hypot(dx, dy); let nx = dx/dist, ny = dy/dist;
-                let sx = t.x - nx * 17 - this.whiteBall.x, sy = t.y - ny * 17 - this.whiteBall.y; let sDist = Math.hypot(sx, sy);
-                if ((sx*dx + sy*dy) / (sDist * dist) > 0) { let score = 1000 - sDist - dist + t.val*20; if (score > maxScore) { maxScore = score; best = { x: sx/sDist, y: sy/sDist, p: Math.min(25, sDist/15+8) }; } }
+        try {
+            let targets = this.balls.filter(b => b.active && (b===this.whiteBall?false:(this.state.target==='RED'?b.type===1:(this.state.target==='COLOR'?b.type===2:b.val===this.state.target))));
+            if (targets.length === 0) { this.startAiAnimation({x: 1, y: 0}, 5); return; }
+            let best = null; let maxScore = -9999;
+            targets.forEach(t => {
+                this.pockets.forEach(p => {
+                    let dx = p.x - t.x, dy = p.y - t.y; let dist = Math.hypot(dx, dy); if(dist<1)dist=1;
+                    let nx = dx/dist, ny = dy/dist;
+                    let sx = t.x - nx * 17 - this.whiteBall.x, sy = t.y - ny * 17 - this.whiteBall.y; let sDist = Math.hypot(sx, sy); if(sDist<1)sDist=1;
+                    if ((sx*dx + sy*dy) / (sDist * dist) > 0) { let score = 1000 - sDist - dist + t.val*20; if (score > maxScore) { maxScore = score; best = { x: sx/sDist, y: sy/sDist, p: Math.min(25, sDist/15+8) }; } }
+                });
             });
-        });
-        if (!best) { let t = targets[0]; let dx = t.x - this.whiteBall.x, dy = t.y - this.whiteBall.y; let d = Math.hypot(dx, dy); best = { x: dx/d, y: dy/d, p: 15 }; }
-        this.startAiAnimation(best, best.p);
+            if (!best) { 
+                let t = targets[0]; let dx = t.x - this.whiteBall.x, dy = t.y - this.whiteBall.y; let d = Math.hypot(dx, dy); 
+                if(d < 0.1) d = 1; 
+                best = { x: dx/d, y: dy/d, p: 15 }; 
+            }
+            this.startAiAnimation(best, best.p);
+        } catch(e) {
+            // AI 出错保护：随机击球
+            this.startAiAnimation({x: Math.random(), y: Math.random()}, 10);
+        }
     }
-    startAiAnimation(dir, power) { this.state.aiState = 'ANIMATING'; this.state.aiAnimStart = Date.now(); this.state.aiDir = { x: dir.x, y: dir.y }; this.state.aiPower = power; }
+    
+    startAiAnimation(dir, power) { 
+        // 参数清洗
+        let dx = dir.x || 1; let dy = dir.y || 0; let p = power || 5;
+        if(isNaN(dx) || isNaN(dy)) { dx=1; dy=0; }
+        
+        this.state.aiState = 'ANIMATING'; 
+        this.state.aiAnimStart = Date.now(); 
+        this.state.aiDir = { x: dx, y: dy }; 
+        this.state.aiPower = p; 
+    }
 
     updateUI() {
         setClass('panel-p1', 'active', this.state.turn === 'P1'); setClass('panel-p2', 'active', this.state.turn === 'P2');
@@ -626,7 +563,11 @@ class GameApp {
         let txt = "";
         if (!this.isMyTurn() && this.state.mode.startsWith('ONLINE')) txt = this.text.wait_opp;
         else if (this.state.phase === 'PLACING') txt = this.text.place;
-        else if (this.state.mode === 'PvCPU' && this.state.turn === 'P2') txt = this.text.think;
+        else if (this.state.mode === 'PvCPU' && this.state.turn === 'P2') {
+            // 修复：只要在移动中，就优先显示 Wait (Rolling)，防止玩家误以为卡在 Thinking
+            if (this.state.phase === 'MOVING') txt = this.text.wait;
+            else txt = (this.state.aiState === 'ANIMATING') ? this.text.shooting : this.text.think;
+        }
         else if (this.state.target === 'RED') txt = this.text.target_red;
         else if (this.state.target === 'COLOR') txt = this.text.target_any;
         else txt = this.text.target_ball + this.text.balls[this.state.target];
@@ -636,6 +577,7 @@ class GameApp {
     }
 
     drawCue(ctx, sx, sy, nx, ny, pwr) {
+        if(isNaN(nx) || isNaN(ny)) return;
         let cueDist = 20 + pwr * 150; let csx = sx - nx * cueDist, csy = sy - ny * cueDist;
         ctx.beginPath(); ctx.moveTo(csx, csy); ctx.lineTo(csx - nx * 300, csy - ny * 300); ctx.strokeStyle = "#deb887"; ctx.lineWidth = 6; ctx.lineCap = "round"; ctx.stroke();
         ctx.beginPath(); ctx.moveTo(csx, csy); ctx.lineTo(csx-nx*5, csy-ny*5); ctx.strokeStyle = "#333"; ctx.lineWidth = 6; ctx.stroke();
@@ -673,6 +615,7 @@ class GameApp {
         }
         if (this.state.mode === 'PvCPU' && this.state.turn === 'P2' && this.state.aiState === 'ANIMATING') {
             let now = Date.now(), elapsed = now - this.state.aiAnimStart;
+            this.updateUI(); // Ensure UI updates during animation
             if (elapsed < 1200) { let val = Math.sin((elapsed/1200) * Math.PI / 2); this.drawCue(this.ctx, this.whiteBall.x, this.whiteBall.y, this.state.aiDir.x, this.state.aiDir.y, (this.state.aiPower/25)*val); }
             else { this.state.aiState = 'IDLE'; this.executeShoot(this.state.aiDir.x, this.state.aiDir.y, this.state.aiPower, false); }
         }
